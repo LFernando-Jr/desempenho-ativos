@@ -2,7 +2,6 @@
 # Carregando pacotes ------------------------------------------------------
 
 library(tidyverse)
-library(scales)
 
 # Setup -------------------------------------------------------------------
 
@@ -52,7 +51,7 @@ data |>
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), labels = date_format("%b/%Y"), breaks = "6 months",) +
+  scale_x_date(expand = c(0,0), date_labels = "%b/%Y", breaks = "6 months",) +
   scale_colour_manual(values = c("black",
                                  "#4e5579",
                                  "#dc7a3a",
@@ -85,7 +84,7 @@ data |>
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), labels = date_format("%b"), breaks = "1 months",) +
+  scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months",) +
   scale_colour_manual(values = c("black",
                                  "#4e5579",
                                  "#dc7a3a",
@@ -118,7 +117,7 @@ data |>
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), labels = date_format("%d"), breaks = "1 day",) +
+  scale_x_date(expand = c(0,0), date_labels = "%d", breaks = "1 day",) +
   scale_colour_manual(values = c("black",
                                  "#4e5579",
                                  "#dc7a3a",
@@ -135,4 +134,3 @@ data |>
 ggsave("variacao mensal acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                            "/Gráficos/Índices",
                                                                                                            sep = ""))
-

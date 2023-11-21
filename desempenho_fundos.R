@@ -2,7 +2,6 @@
 # Carregando pacotes ------------------------------------------------------
 
 library(tidyverse)
-library(scales)
 
 # Setup -------------------------------------------------------------------
 
@@ -27,7 +26,7 @@ df <- rbind(funds, read.csv("index.csv", header = TRUE, sep = ";", dec = ",", ch
               mutate(Data = as.Date(Data, format = "%d/%m/%Y"))  |>
               filter(`Nome do Ativo` == "IHFA"))
 
-cdi <- read.csv("cdi.csv", header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
+cdi <- read.csv("index.csv", header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
   `colnames<-`(c("Nome do Ativo",
                  "Data",
                  "CDI")) |>
@@ -81,7 +80,7 @@ data |>
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), labels = date_format("%b/%Y"), breaks = "6 months",) +
+  scale_x_date(expand = c(0,0), date_labels = "%m/%Y", breaks = "6 months",) +
   scale_colour_manual(values = c("#4e5579",
                                  "black",
                                  "#dc7a3a",
@@ -92,7 +91,7 @@ data |>
                                  "#b83b5e",
                                  "#4eadde")) + 
   labs(title = "Fundos",
-       subtitle = "Variação trianual", 
+       subtitle = "Variação trianual do excesso de retorno", 
        caption = "Fonte: Capri com dados da Quantum Axis")
 
 ggsave("variacao trianual.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
@@ -115,7 +114,7 @@ data |>
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), labels = date_format("%b"), breaks = "1 months",) +
+  scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months",) +
   scale_colour_manual(values = c("#4e5579",
                                  "black",
                                  "#4eadde",
@@ -126,7 +125,7 @@ data |>
                                  "#e77e52",
                                  "#b83b5e")) + 
   labs(title = "Fundos",
-       subtitle = "Variação acumulada no ano",
+       subtitle = "Excesso de retorno acumulado no ano",
        caption = "Fonte: Capri com dados da Quantum Axis")
 
 ggsave("variacao anual acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
@@ -149,7 +148,7 @@ data |>
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), labels = date_format("%d"), breaks = "1 day",) +
+  scale_x_date(expand = c(0,0), date_labels = "%d", breaks = "1 day",) +
   scale_colour_manual(values = c("#4e5579", 
                                  "black",
                                  "#4eadde",
@@ -160,7 +159,7 @@ data |>
                                  "#e77e52",
                                  "#b83b5e")) + 
   labs(title = "Fundos",
-       subtitle = "Variação acumulada no mês",
+       subtitle = "Excesso de retorno acumulado no mês",
        caption = "Fonte: Capri com dados da Quantum Axis")
 
 ggsave("variacao mensal acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
