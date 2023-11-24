@@ -2,6 +2,7 @@
 # Carregando pacotes ------------------------------------------------------
 
 library(tidyverse)
+library(gridExtra)
 
 # Setup -------------------------------------------------------------------
 
@@ -12,7 +13,7 @@ Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
 
-df <- read.csv("index.csv", header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
+df <- read.csv(paste0(getwd(), "/Dados/index.csv"), header = TRUE, sep = ";", dec = ",") |>
   `colnames<-`(c("Nome do Ativo",
                  "Data",
                  "Cota")) |>
@@ -34,6 +35,24 @@ data <- df |>
 
 write.csv2(data, "desempenho_indices.csv")
 
+tbl_mes <- tableGrob(data[,c(1,2,6)] |>
+                       arrange(desc(Data)) |>
+                       group_by(`Nome do Ativo`) |>
+                       slice(1) |>
+                       ungroup() |>
+                       select(-Data) |>
+                       arrange(desc(var_mes)) |>
+                       rename(`% No mês ` = var_mes), theme = ttheme_minimal())
+
+tbl_ano <- tableGrob(data[,c(1,2,5)] |>
+                       arrange(desc(Data)) |>
+                       group_by(`Nome do Ativo`) |>
+                       slice(1) |>
+                       ungroup() |>
+                       select(-Data) |>
+                       arrange(desc(var_ano)) |>
+                       rename(`% No ano ` = var_ano), theme = ttheme_minimal())
+
 # Visualização de dados ---------------------------------------------------
 
 ## Variação anual -------------------------------------------------------
@@ -53,19 +72,19 @@ data |>
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%b/%Y", breaks = "6 months",) +
   scale_colour_manual(values = c("black",
-                                 "#4e5579",
-                                 "#dc7a3a",
-                                 "#a74b2d",
-                                 "#6b5b95",
-                                 "#3e4651",
-                                 "#e77e52",
-                                 "#b83b5e",
-                                 "#4eadde")) + 
+                                 "#2F47AD",
+                                 "#8C977D",
+                                 "#31AFE0",
+                                 "#E47632",
+                                 "#AD4728",
+                                 "#3BA58B",
+                                 "#D4A83F",
+                                 "#8057A5")) +
   labs(title = "Índices", 
        subtitle = "Variação anual",
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao anual.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
+ggsave("variacao anual.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                 "/Gráficos/Índices",
                                                                                                 sep = ""))
 
@@ -78,6 +97,7 @@ data |>
             aes(Data, var_ano, colour = `Nome do Ativo`), size = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "CDI"), 
             aes(Data, var_ano, colour = "CDI"), size = .5, linetype = "longdash") +
+  annotation_custom(grob = tbl_ano, xmax = as.Date("2023-03-02"), ymin = 8.5) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
                      legend.position = "bottom", 
@@ -86,51 +106,52 @@ data |>
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months",) +
   scale_colour_manual(values = c("black",
-                                 "#4e5579",
-                                 "#dc7a3a",
-                                 "#a74b2d",
-                                 "#6b5b95",
-                                 "#3e4651",
-                                 "#e77e52",
-                                 "#b83b5e",
-                                 "#4eadde")) + 
+                                 "#2F47AD",
+                                 "#8C977D",
+                                 "#31AFE0",
+                                 "#E47632",
+                                 "#AD4728",
+                                 "#3BA58B",
+                                 "#D4A83F",
+                                 "#8057A5")) + 
   labs(title = "Índices",
        subtitle = "Variação acumulada no ano", 
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao anual acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
+ggsave("variacao anual acumulada.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                           "/Gráficos/Índices",
                                                                                                           sep = ""))
 
 ## Variação mensal acumulada  -------------------------------------------------------
 
-data |> 
+data |>
   filter(Data >= "2023-10-31") |>
   ggplot() +
-  geom_line(data = . %>% filter(`Nome do Ativo` != "CDI"), 
+  geom_line(data = . %>% filter(`Nome do Ativo` != "CDI"),
             aes(Data, var_mes, colour = `Nome do Ativo`), size = .75) +
-  geom_line(data = . %>% filter(`Nome do Ativo` == "CDI"), 
+  geom_line(data = . %>% filter(`Nome do Ativo` == "CDI"),
             aes(Data, var_mes, colour = "CDI"), size = .5, linetype = "longdash") +
-  theme_bw() + theme(panel.grid.minor = element_blank(), 
+  annotation_custom(grob = tbl_mes, xmax = as.Date("2023-11-07"), ymin = 5) +
+  theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.line = element_line(colour = "black"),
-                     legend.position = "bottom", 
-                     legend.title = element_blank(), 
-                     axis.title = element_blank(), 
-                     strip.background = element_blank()) + 
+                     legend.position = "bottom",
+                     legend.title = element_blank(),
+                     axis.title = element_blank(),
+                     strip.background = element_blank()) +
   scale_x_date(expand = c(0,0), date_labels = "%d", breaks = "1 day",) +
   scale_colour_manual(values = c("black",
-                                 "#4e5579",
-                                 "#dc7a3a",
-                                 "#a74b2d",
-                                 "#6b5b95",
-                                 "#3e4651",
-                                 "#e77e52",
-                                 "#b83b5e",
-                                 "#4eadde")) +  
+                                 "#2F47AD",
+                                 "#8C977D",
+                                 "#31AFE0",
+                                 "#E47632",
+                                 "#AD4728",
+                                 "#3BA58B",
+                                 "#D4A83F",
+                                 "#8057A5")) +
   labs(title = "Índices",
        subtitle = "Variação acumulada no mês", 
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao mensal acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
+ggsave("variacao mensal acumulada.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                            "/Gráficos/Índices",
                                                                                                            sep = ""))

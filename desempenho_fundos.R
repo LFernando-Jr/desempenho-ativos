@@ -11,14 +11,15 @@ Sys.setenv("LANGUAGE" = "Pt")
 Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
-funds <- read.csv("fundos.csv", header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
+
+funds <- read.csv(paste0(getwd(), "/Dados/fundos.csv"), header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
   `colnames<-`(c("Nome do Ativo",
                  "Data",
                  "Cota")) |>
   as_tibble() |>
   mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
 
-df <- rbind(funds, read.csv("index.csv", header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
+df <- rbind(funds, read.csv(paste0(getwd(), "/Dados/index.csv"), header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
               `colnames<-`(c("Nome do Ativo",
                              "Data",
                              "Cota")) |>
@@ -26,7 +27,7 @@ df <- rbind(funds, read.csv("index.csv", header = TRUE, sep = ";", dec = ",", ch
               mutate(Data = as.Date(Data, format = "%d/%m/%Y"))  |>
               filter(`Nome do Ativo` == "IHFA"))
 
-cdi <- read.csv("index.csv", header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
+cdi <- read.csv(paste0(getwd(), "/Dados/index.csv"), header = TRUE, sep = ";", dec = ",", check.names = FALSE) |>
   `colnames<-`(c("Nome do Ativo",
                  "Data",
                  "CDI")) |>
@@ -60,11 +61,29 @@ data <- df |>
   mutate(excess_var_ano = var_ano - cdi_ano) |>
   mutate(excess_var_mes = var_mes - cdi_mes)
 
+tbl_mes <- tableGrob(data[,c(1,2,13)] |>
+                       arrange(desc(Data)) |>
+                       group_by(`Nome do Ativo`) |>
+                       slice(1) |>
+                       ungroup() |>
+                       select(-Data) |>
+                       arrange(desc(excess_var_mes)) |>
+                       rename(`% No mês ` = excess_var_mes), theme = ttheme_minimal())
+
+tbl_ano <- tableGrob(data[,c(1,2,12)] |>
+                       arrange(desc(Data)) |>
+                       group_by(`Nome do Ativo`) |>
+                       slice(1) |>
+                       ungroup() |>
+                       select(-Data) |>
+                       arrange(desc(excess_var_ano)) |>
+                       rename(`% No mês ` = excess_var_ano), theme = ttheme_minimal())
+
 write.csv2(data, "desempenho_fundos.csv")
 
 # Visualização de dados ---------------------------------------------------
 
-## Variação Trianual -------------------------------------------------------
+## Variação Trianual ------------------------------------------------------
 
 data |> 
   filter(Data >= "2018-01-01") |>
@@ -81,20 +100,20 @@ data |>
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%m/%Y", breaks = "6 months",) +
-  scale_colour_manual(values = c("#4e5579",
+  scale_colour_manual(values = c("#2F47AD",
                                  "black",
-                                 "#dc7a3a",
-                                 "#a74b2d",
-                                 "#6b5b95",
-                                 "#3e4651",
-                                 "#e77e52",
-                                 "#b83b5e",
-                                 "#4eadde")) + 
+                                 "#8C977D",
+                                 "#31AFE0",
+                                 "#E47632",
+                                 "#AD4728",
+                                 "#3BA58B",
+                                 "#D4A83F",
+                                 "#8057A5")) + 
   labs(title = "Fundos",
        subtitle = "Variação trianual do excesso de retorno", 
        caption = "Fonte: Capri com dados da Quantum Axis")
-
-ggsave("variacao trianual.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
+  
+ggsave("variacao trianual.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                    "/Gráficos/Fundos",
                                                                                                    sep = ""))
 
@@ -115,20 +134,20 @@ data |>
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months",) +
-  scale_colour_manual(values = c("#4e5579",
+  scale_colour_manual(values = c("#2F47AD",
                                  "black",
-                                 "#4eadde",
-                                 "#dc7a3a",
-                                 "#a74b2d",
-                                 "#6b5b95",
-                                 "#3e4651",
-                                 "#e77e52",
-                                 "#b83b5e")) + 
+                                 "#8C977D",
+                                 "#31AFE0",
+                                 "#E47632",
+                                 "#AD4728",
+                                 "#3BA58B",
+                                 "#D4A83F",
+                                 "#8057A5")) + 
   labs(title = "Fundos",
        subtitle = "Excesso de retorno acumulado no ano",
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao anual acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
+ggsave("variacao anual acumulada.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                           "/Gráficos/Fundos",
                                                                                                           sep = ""))
 
@@ -142,6 +161,7 @@ data |>
   geom_line(data = . %>% filter(`Nome do Ativo` == "IHFA"), 
             aes(Data, excess_var_mes, colour = "IHFA"), size = .5, linetype = "longdash") +
   geom_hline(yintercept = 0) +
+  annotation_custom(grob = tbl_mes, xmax = as.Date("2023-11-10"), ymin = 2) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
                      legend.position = "bottom", 
@@ -149,19 +169,19 @@ data |>
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%d", breaks = "1 day",) +
-  scale_colour_manual(values = c("#4e5579", 
+  scale_colour_manual(values = c("#2F47AD",
                                  "black",
-                                 "#4eadde",
-                                 "#dc7a3a",
-                                 "#a74b2d",
-                                 "#6b5b95",
-                                 "#3e4651",
-                                 "#e77e52",
-                                 "#b83b5e")) + 
+                                 "#8C977D",
+                                 "#31AFE0",
+                                 "#E47632",
+                                 "#AD4728",
+                                 "#3BA58B",
+                                 "#D4A83F",
+                                 "#8057A5")) + 
   labs(title = "Fundos",
        subtitle = "Excesso de retorno acumulado no mês",
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao mensal acumulada.png", width = 21, height = 11.900, units = "in", dpi = 800, path = paste(getwd(),
+ggsave("variacao mensal acumulada.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
                                                                                                            "/Gráficos/Fundos",
                                                                                                            sep = ""))
