@@ -2,7 +2,6 @@
 # Carregando pacotes ------------------------------------------------------
 
 library(tidyverse)
-library(gridExtra)
 
 # Setup -------------------------------------------------------------------
 
@@ -27,31 +26,25 @@ class(df)
 str(df)
 
 # Tratamento de dados -----------------------------------------------------
+
 data <- df |>
   group_by(`Nome do Ativo`) |>
   mutate(var_12M = round(((Cota / lag(Cota,252)) - 1)*100,2)) |>
   mutate(var_ano = round(((Cota / Cota[which(Data == "2023-01-02")]) - 1)*100,2)) |>
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2023-10-31")]) - 1)*100,2))
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2023-11-30")]) - 1)*100,2))
 
-write.csv2(data, "desempenho_indices.csv")
+tbl <- data[,c(1,2,5,6)] |>
+  arrange(desc(Data)) |>
+  group_by(`Nome do Ativo`) |>
+  slice(1) |>
+  ungroup() |>
+  select(-Data) |>
+  arrange(desc(var_mes)) |>
+  rename(`% No mês ` = var_mes,
+         `% No ano ` = var_ano)
 
-tbl_mes <- tableGrob(data[,c(1,2,6)] |>
-                       arrange(desc(Data)) |>
-                       group_by(`Nome do Ativo`) |>
-                       slice(1) |>
-                       ungroup() |>
-                       select(-Data) |>
-                       arrange(desc(var_mes)) |>
-                       rename(`% No mês ` = var_mes), theme = ttheme_minimal())
-
-tbl_ano <- tableGrob(data[,c(1,2,5)] |>
-                       arrange(desc(Data)) |>
-                       group_by(`Nome do Ativo`) |>
-                       slice(1) |>
-                       ungroup() |>
-                       select(-Data) |>
-                       arrange(desc(var_ano)) |>
-                       rename(`% No ano ` = var_ano), theme = ttheme_minimal())
+# write.csv2(data, "desempenho_indices.csv")
+write.csv2(tbl, "desempenho_indices.csv")
 
 # Visualização de dados ---------------------------------------------------
 
@@ -61,9 +54,9 @@ data |>
   filter(Data >= "2018-01-01") |>
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "CDI"), 
-            aes(Data, var_12M, colour = `Nome do Ativo`), size = .75) +
+            aes(Data, var_12M, colour = `Nome do Ativo`), linewidth = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "CDI"), 
-            aes(Data, var_12M, colour = "CDI"), size = .5, linetype = "longdash") +
+            aes(Data, var_12M, colour = "CDI"), linewidth = .5, linetype = "longdash") +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
                      legend.position = "bottom", 
@@ -94,10 +87,9 @@ data |>
   filter(Data >= "2023-01-01") |>
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "CDI"), 
-            aes(Data, var_ano, colour = `Nome do Ativo`), size = .75) +
+            aes(Data, var_ano, colour = `Nome do Ativo`), linewidth = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "CDI"), 
-            aes(Data, var_ano, colour = "CDI"), size = .5, linetype = "longdash") +
-  annotation_custom(grob = tbl_ano, xmax = as.Date("2023-03-02"), ymin = 8.5) +
+            aes(Data, var_ano, colour = "CDI"), linewidth = .5, linetype = "longdash") +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
                      legend.position = "bottom", 
@@ -125,13 +117,12 @@ ggsave("variacao anual acumulada.png", width = 15, height = 8.661, units = "in",
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data |>
-  filter(Data >= "2023-10-31") |>
+  filter(Data >= "2023-11-30") |>
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "CDI"),
-            aes(Data, var_mes, colour = `Nome do Ativo`), size = .75) +
+            aes(Data, var_mes, colour = `Nome do Ativo`), linewidth = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "CDI"),
-            aes(Data, var_mes, colour = "CDI"), size = .5, linetype = "longdash") +
-  annotation_custom(grob = tbl_mes, xmax = as.Date("2023-11-07"), ymin = 5) +
+            aes(Data, var_mes, colour = "CDI"), linewidth = .5, linetype = "longdash") +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.line = element_line(colour = "black"),
                      legend.position = "bottom",

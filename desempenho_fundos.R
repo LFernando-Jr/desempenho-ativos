@@ -51,35 +51,28 @@ data <- df |>
   #fundos
   mutate(var_36M = round(((Cota / lag(Cota,252*3)) - 1)*100,2)) |>
   mutate(var_ano = round(((Cota / Cota[which(Data == "2023-01-02")]) - 1)*100,2)) |>
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2023-10-31")]) - 1)*100,2)) |>
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2023-11-30")]) - 1)*100,2)) |>
   #cdi
   mutate(cdi_36M = round(((CDI / lag(CDI,252*3)) - 1)*100,2)) |>
   mutate(cdi_ano = round(((CDI / CDI[which(Data == "2023-01-02")]) - 1)*100,2)) |>
-  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2023-10-31")]) - 1)*100,2)) |>
+  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2023-11-30")]) - 1)*100,2)) |>
   #excesso
   mutate(excess_var_36M = var_36M - cdi_36M) |>
   mutate(excess_var_ano = var_ano - cdi_ano) |>
   mutate(excess_var_mes = var_mes - cdi_mes)
 
-tbl_mes <- tableGrob(data[,c(1,2,13)] |>
-                       arrange(desc(Data)) |>
-                       group_by(`Nome do Ativo`) |>
-                       slice(1) |>
-                       ungroup() |>
-                       select(-Data) |>
-                       arrange(desc(excess_var_mes)) |>
-                       rename(`% No mês ` = excess_var_mes), theme = ttheme_minimal())
+tbl <- data[,c(1,2,12,13)] |>
+  arrange(desc(Data)) |>
+  group_by(`Nome do Ativo`) |>
+  slice(1) |>
+  ungroup() |>
+  select(-Data) |>
+  arrange(desc(excess_var_ano)) |>
+  rename(`% No mês ` = excess_var_mes,
+         `% No ano ` = excess_var_ano)
 
-tbl_ano <- tableGrob(data[,c(1,2,12)] |>
-                       arrange(desc(Data)) |>
-                       group_by(`Nome do Ativo`) |>
-                       slice(1) |>
-                       ungroup() |>
-                       select(-Data) |>
-                       arrange(desc(excess_var_ano)) |>
-                       rename(`% No mês ` = excess_var_ano), theme = ttheme_minimal())
-
-write.csv2(data, "desempenho_fundos.csv")
+# write.csv2(data, "desempenho_fundos.csv")
+ write.csv2(tbl, "desempenho_fundos.csv")
 
 # Visualização de dados ---------------------------------------------------
 
@@ -89,9 +82,9 @@ data |>
   filter(Data >= "2018-01-01") |>
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "IHFA"), 
-            aes(Data, excess_var_36M, colour = `Nome do Ativo`), size = .75) +
+            aes(Data, excess_var_36M, colour = `Nome do Ativo`), linewidth = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "IHFA"), 
-            aes(Data, excess_var_36M, colour = "IHFA"), size = .5, linetype = "longdash") +
+            aes(Data, excess_var_36M, colour = "IHFA"), linewidth = .5, linetype = "longdash") +
   geom_hline(yintercept = 0) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
@@ -123,9 +116,9 @@ data |>
   filter(Data >= "2023-01-01") |>
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "IHFA"), 
-            aes(Data, excess_var_ano, colour = `Nome do Ativo`), size = .75) +
+            aes(Data, excess_var_ano, colour = `Nome do Ativo`), linewidth = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "IHFA"), 
-            aes(Data, excess_var_ano, colour = "IHFA"), size = .5, linetype = "longdash") +
+            aes(Data, excess_var_ano, colour = "IHFA"), linewidth = .5, linetype = "longdash") +
   geom_hline(yintercept = 0) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
@@ -154,14 +147,13 @@ ggsave("variacao anual acumulada.png", width = 15, height = 8.661, units = "in",
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data |> 
-  filter(Data >= "2023-10-31") |>
+  filter(Data >= "2023-11-30") |>
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "IHFA"), 
-            aes(Data, excess_var_mes, colour = `Nome do Ativo`), size = .75) +
+            aes(Data, excess_var_mes, colour = `Nome do Ativo`), linewidth = .75) +
   geom_line(data = . %>% filter(`Nome do Ativo` == "IHFA"), 
-            aes(Data, excess_var_mes, colour = "IHFA"), size = .5, linetype = "longdash") +
+            aes(Data, excess_var_mes, colour = "IHFA"), linewidth = .5, linetype = "longdash") +
   geom_hline(yintercept = 0) +
-  annotation_custom(grob = tbl_mes, xmax = as.Date("2023-11-10"), ymin = 2) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
                      legend.position = "bottom", 
