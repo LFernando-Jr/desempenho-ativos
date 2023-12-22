@@ -72,9 +72,6 @@ tbl <- data[,c(1,2,11,12,13)] |>
          `% No ano ` = excess_var_ano,
          `% em 36 meses ` = excess_var_36M )
 
-# write.csv2(data, "desempenho_fundos.csv")
-# write.csv2(tbl, "desempenho_fundos.csv")
-
 # Visualização de dados ---------------------------------------------------
 
 ## Variação Trianual ------------------------------------------------------

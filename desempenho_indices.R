@@ -43,9 +43,6 @@ tbl <- data[,c(1,2,5,6)] |>
   rename(`% No mês ` = var_mes,
          `% No ano ` = var_ano)
 
-# write.csv2(data, "desempenho_indices.csv")
-write.csv2(tbl, "desempenho_indices.csv")
-
 # Visualização de dados ---------------------------------------------------
 
 ## Variação anual -------------------------------------------------------
