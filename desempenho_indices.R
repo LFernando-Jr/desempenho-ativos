@@ -12,11 +12,11 @@ Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
 
-df <- read.csv(paste0(getwd(), "/Dados/index.csv"), header = TRUE, sep = ";", dec = ",") |>
+df <- read.csv(paste0(getwd(), "/Dados/index.csv"), header = TRUE, sep = ";", dec = ",") %>%
   `colnames<-`(c("Nome do Ativo",
                  "Data",
-                 "Cota")) |>
-  as_tibble() |>
+                 "Cota")) %>%
+  as_tibble() %>%
   mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
 
 # Classe
@@ -27,19 +27,20 @@ str(df)
 
 # Tratamento de dados -----------------------------------------------------
 
-data <- df |>
-  group_by(`Nome do Ativo`) |>
-  mutate(var_12M = round(((Cota / lag(Cota,252)) - 1)*100,2)) |>
-  mutate(var_ano = round(((Cota / Cota[which(Data == "2023-01-02")]) - 1)*100,2)) |>
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2023-11-30")]) - 1)*100,2))
+data <- df %>%
+  group_by(`Nome do Ativo`) %>%
+  mutate(var_12M = round(((Cota / lag(Cota,252)) - 1)*100,2)) %>%
+  mutate(var_ano = round(((Cota / Cota[which(Data == "2023-01-02")]) - 1)*100,2)) %>%
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2023-12-01")]) - 1)*100,2))
 
-tbl <- data[,c(1,2,5,6)] |>
-  arrange(desc(Data)) |>
-  group_by(`Nome do Ativo`) |>
-  slice(1) |>
-  ungroup() |>
-  select(-Data) |>
-  arrange(desc(var_mes)) |>
+tbl <- data[,c(1,2,5,6)] %>%
+  filter(Data < "2024-01-01") %>% 
+  arrange(desc(Data)) %>%
+  group_by(`Nome do Ativo`) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(-Data) %>%
+  arrange(desc(var_mes)) %>%
   rename(`% No mês ` = var_mes,
          `% No ano ` = var_ano)
 
@@ -47,8 +48,8 @@ tbl <- data[,c(1,2,5,6)] |>
 
 ## Variação anual -------------------------------------------------------
 
-data |> 
-  filter(Data >= "2018-01-01") |>
+data %>% 
+  filter(Data >= "2018-01-01") %>%
   ggplot() +
   geom_line(data = . %>% filter(`Nome do Ativo` != "CDI"), 
             aes(Data, var_12M, colour = `Nome do Ativo`), linewidth = .75) +
@@ -61,6 +62,7 @@ data |>
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%b/%Y", breaks = "6 months",) +
   scale_colour_manual(values = c("black",
+                                 "#FF6F61",
                                  "#2F47AD",
                                  "#8C977D",
                                  "#31AFE0",
@@ -83,9 +85,9 @@ ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 57
 
 ## Variação anual acumulada  -------------------------------------------------------
 
-data |>
-  filter(Data >= "2023-01-01") |>
-  mutate(`Nome do Ativo` = factor(`Nome do Ativo`, levels = arrange(tbl, desc(`% No ano `))$`Nome do Ativo`)) |>
+data %>%
+  filter(Data >= "2023-01-01" & Data < "2024-01-01") %>%
+  mutate(`Nome do Ativo` = factor(`Nome do Ativo`, levels = arrange(tbl, desc(`% No ano `))$`Nome do Ativo`)) %>%
   ggplot() +
   aes(Data, var_ano, colour = `Nome do Ativo`, linetype = `Nome do Ativo`) +
   geom_line(linewidth = .75) +
@@ -102,7 +104,8 @@ data |>
                                  "IHFA" = "#E47632",
                                  "IMA-B" = "#AD4728",
                                  "IMA-B 5" = "#3BA58B",
-                                 "IRF-M" = "#D4A83F"),
+                                 "IRF-M" = "#D4A83F",
+                                 "Dólar" = "#FF6F61"),
                       labels = c("Ibovespa" = paste0("Ibovespa: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "Ibovespa")], "%"),
                                "CDI" = paste0("CDI: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "CDI")], "%"),
                                "IDA-DI" = paste0("IDA-DI: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IDA-DI")], "%"),
@@ -110,7 +113,8 @@ data |>
                                "IHFA" = paste0("IHFA: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IHFA")], "%"),
                                "IMA-B" = paste0("IMA-B: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IMA-B")], "%"),
                                "IMA-B 5" = paste0("IMA-B 5: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IMA-B 5")], "%"),
-                               "IRF-M" = paste0("IRF-M: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IRF-M")], "%"))) +
+                               "IRF-M" = paste0("IRF-M: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IRF-M")], "%"),
+                               "Dólar" = paste0("Dólar: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "Dólar")], "%"))) +
   scale_linetype_manual(values = c("CDI" = "longdash", 
                                    "Ibovespa" = "solid",
                                    "CDI" = "solid",
@@ -119,7 +123,8 @@ data |>
                                    "IHFA" = "solid",
                                    "IMA-B" = "solid",
                                    "IMA-B 5" = "solid",
-                                   "IRF-M" = "solid")) +
+                                   "IRF-M" = "solid",
+                                   "Dólar" = "solid")) +
   guides(linetype = "none") +
   labs(title = NULL,
        subtitle = "Variação acumulada no ano", 
@@ -131,9 +136,9 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 
 ## Variação mensal acumulada  -------------------------------------------------------
 
-data |>
-  filter(Data >= "2023-11-30") |>
-  mutate(`Nome do Ativo` = factor(`Nome do Ativo`, levels = arrange(tbl, desc(`% No mês `))$`Nome do Ativo`)) |>
+data %>%
+  filter(Data >= "2023-12-01" & Data < "2024-01-01") %>%
+  mutate(`Nome do Ativo` = factor(`Nome do Ativo`, levels = arrange(tbl, desc(`% No mês `))$`Nome do Ativo`)) %>%
   ggplot() +
   aes(Data, var_mes, colour = `Nome do Ativo`, linetype = `Nome do Ativo`) +
   geom_line(linewidth = .75) +
@@ -150,7 +155,8 @@ data |>
                                  "IHFA" = "#E47632",
                                  "IMA-B" = "#AD4728",
                                  "IMA-B 5" = "#3BA58B",
-                                 "IRF-M" = "#D4A83F"),
+                                 "IRF-M" = "#D4A83F",
+                                 "Dólar" = "#FF6F61"),
                       labels = c("Ibovespa" = paste0("Ibovespa: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "Ibovespa")], "%"),
                                  "CDI" = paste0("CDI: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "CDI")], "%"),
                                  "IDA-DI" = paste0("IDA-DI: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "IDA-DI")], "%"),
@@ -158,7 +164,8 @@ data |>
                                  "IHFA" = paste0("IHFA: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "IHFA")], "%"),
                                  "IMA-B" = paste0("IMA-B: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "IMA-B")], "%"),
                                  "IMA-B 5" = paste0("IMA-B 5: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "IMA-B 5")], "%"),
-                                 "IRF-M" = paste0("IRF-M: ", tbl$`% No mês `[which(tbl$`Nome do Ativo` == "IRF-M")], "%"))) +
+                                 "IRF-M" = paste0("IRF-M: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "IRF-M")], "%"),
+                                 "Dólar" = paste0("Dólar: ", tbl$`% No ano `[which(tbl$`Nome do Ativo` == "Dólar")], "%"))) +
   scale_linetype_manual(values = c("CDI" = "longdash", 
                                    "Ibovespa" = "solid",
                                    "CDI" = "solid",
@@ -167,7 +174,8 @@ data |>
                                    "IHFA" = "solid",
                                    "IMA-B" = "solid",
                                    "IMA-B 5" = "solid",
-                                   "IRF-M" = "solid")) +
+                                   "IRF-M" = "solid",
+                                   "Dólar" = "solid")) +
   guides(linetype = "none") +
   labs(title = NULL,
        subtitle = "Variação acumulada no mês", 
