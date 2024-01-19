@@ -48,12 +48,11 @@ data <- df %>%
   pivot_longer(cols = -1) %>% 
   group_by(name) %>%
   mutate(var_12M = round(((value / lag(value,252)) - 1)*100,2)) %>%
-  mutate(var_ano = round(((value / value[which(date == "2023-01-03")]) - 1)*100,2)) %>%
-  mutate(var_mes = round(((value / value[which(date == "2023-12-01")]) - 1)*100,2)) %>% 
+  mutate(var_ano = round(((value / value[which(date == "2024-01-02")]) - 1)*100,2)) %>%
+  mutate(var_mes = round(((value / value[which(date == "2024-01-02")]) - 1)*100,2)) %>% 
   na.omit()
 
 tbl <- data[,c(1,2,5,6)] %>%
-  filter(date < "2024-01-01") %>% 
   arrange(desc(date)) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -103,7 +102,7 @@ data %>%
                                  "dxy" = "DXY")) +
   labs(title = "Índices", 
        subtitle = "Variação anual",
-       caption = "Fonte: Capri com dados da Quantum Axis")
+       caption = "Fonte: Capri com dados da Quandl")
 
 ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
                                                                                                 "/Gráficos/Offshore",
@@ -116,7 +115,7 @@ ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 57
 ## Variação anual acumulada  -------------------------------------------------------
 
 data %>%
-  filter(date >= "2023-01-01" & date < "2024-01-01") %>%
+  filter(date >= "2024-01-02") %>%
   mutate(name = factor(name, levels = arrange(tbl, desc(`% No ano `))$name)) %>%
   ggplot() +
   aes(date, var_ano, colour = name) +
@@ -151,7 +150,7 @@ data %>%
                                  "dxy" = paste0("DXY: ", tbl$`% No ano `[which(tbl$name == "dxy")], "%"))) +
   labs(title = NULL,
        subtitle = "Variação acumulada no ano", 
-       caption = "Fonte: Capri com dados da Quantum Axis")
+       caption = "Fonte: Capri com dados da Quandl")
 
 ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
                                                                                                           "/Gráficos/Offshore",
@@ -160,7 +159,7 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>%
-  filter(date >= "2023-12-01" & date < "2024-01-01") %>%
+  filter(date >= "2024-01-01") %>%
   mutate(name = factor(name, levels = arrange(tbl, desc(`% No mês `))$name)) %>%
   ggplot() +
   aes(date, var_mes, colour = name) +
@@ -195,7 +194,7 @@ data %>%
                                  "dxy" = paste0("DXY: ", tbl$`% No mês `[which(tbl$name == "dxy")], "%"))) +
   labs(title = NULL,
        subtitle = "Variação acumulada no mês", 
-       caption = "Fonte: Capri com dados da Quantum Axis")
+       caption = "Fonte: Capri com dados da Quandl")
 
 ggsave("variacao mensal acumulada.png", width = 9720, height = 3920, units = "px", dpi = 1152, path = paste(getwd(),
                                                                                                             "/Gráficos/Offshore",
