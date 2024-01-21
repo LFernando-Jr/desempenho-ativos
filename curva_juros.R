@@ -1,48 +1,41 @@
-library(rb3)
-library(ggplot2)
-library(stringr)
-library(dplyr)
 
-df_yc <- yc_mget(
-  first_date = "2023-06-01",
-  last_date = "2024-11-01"
-)
+# Pacotes -----------------------------------------------------------------
+
+library(tidyverse)
+library(rb3)
+
+# Setup -------------------------------------------------------------------
+
+rm(list = ls())
+
+Sys.setenv("LANGUAGE" = "Pt")
+Sys.setlocale("LC_ALL", "Portuguese")
+
+# Coleta de dados ---------------------------------------------------------
 
 df <- rbind(yc_get(refdate = "2024-01-10"),
-            yc_get(refdate = "2023-12-11"))
+            yc_get(refdate = "2024-01-18"))
 
+# Visualização de dados ---------------------------------------------------
 
-
-p <-
-  df %>% 
+df %>% 
   filter(forward_date <= "2030-01-01") %>% 
-  ggplot(
-  aes(
-    x = forward_date,
-    y = r_252,
-    group = refdate,
-    color = factor(refdate))) +
-  geom_line(linewidth = 1) +
-  labs(
-    title = "Yield Curves for Brazil",
-    subtitle = "Built using interest rates future contracts",
-    caption = str_glue("Data imported using rb3 at {Sys.Date()}"),
-    x = "Forward Date",
-    y = "Annual Interest Rate",
-    color = "Reference Date"
-  ) +
-  theme_light() +
-  scale_y_continuous(labels = scales::percent)
+  ggplot() +
+  aes(x = forward_date, y = r_252, color = factor(refdate)) +
+  geom_line(linewidth = .75) +
+  theme_bw() + theme(panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"),
+                     legend.title = element_blank(), 
+                     axis.title = element_blank(), 
+                     strip.background = element_blank()) + 
+  scale_x_date(expand = c(0,0), date_labels = "%Y", breaks = "12 months") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_colour_manual(values = c("#2F47AD",
+                                 "#AD4728")) +
+  labs(title = "Curva de juros",
+       caption = "Fonte: Capri FO com dados da B3",
+       x = NULL, y = "Taxa de juros")
 
-print(p)
-
-library(ustyc)
-yc <- getYieldCurve()
-summary(yc)
-head(yc$df)
-
-require(xts)
-require(lattice)
-
-xt = xts(yc$df,order.by=as.Date(rownames(yc$df)))
-xyplot.ts(xt,scales=list(y=list(relation="same")),ylab="Yield (%)")
+ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
+                                                                                                "/Gráficos/Curva de juros",
+                                                                                                sep = ""))
