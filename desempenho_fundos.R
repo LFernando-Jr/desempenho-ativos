@@ -85,7 +85,7 @@ data %>%
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 month",) +
+  scale_x_date(expand = c(0,0), date_labels = "%b-%y", breaks = "1 month",) +
   scale_colour_manual(values = c("ABSOLUTE VERTEX FIC MULTIMERCADO" = "#2F47AD",
                                  "IHFA" = "black",
                                  "JGP STRATEGY FIC MULTIMERCADO" = "#8C977D",

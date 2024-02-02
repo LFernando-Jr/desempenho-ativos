@@ -103,9 +103,15 @@ require(lattice)
 xt = xts(yc$df,order.by=as.Date(rownames(yc$df)))
 xyplot.ts(xt,scales=list(y=list(relation="same")),ylab="Yield (%)")
 
+#####################################################################
+
+getSymbols(c("^SPX", "^DJI", "^RUT", "^NDX", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
+
+SPX <- data.frame(date = as.Date(rownames(SPX)), SPX[,4])
 
 
-
+library(YieldCurve)
+data(FedYieldCurve)
 
 
 
