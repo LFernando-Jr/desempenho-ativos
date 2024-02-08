@@ -45,6 +45,7 @@ str(df)
 # Tratamento de dados -----------------------------------------------------
 
 data <- df %>%
+  filter(date <= "2024-01-31") %>% 
   pivot_longer(cols = -1) %>% 
   group_by(name) %>%
   mutate(var_12M = round(((value / lag(value,252)) - 1)*100,2)) %>%

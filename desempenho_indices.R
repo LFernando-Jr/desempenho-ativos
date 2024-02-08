@@ -27,6 +27,7 @@ str(df)
 # Tratamento de dados -----------------------------------------------------
 
 data <- df %>%
+  filter(Data <= "2024-01-31") %>% 
   group_by(Ativo) %>%
   mutate(var_12M = round(((Cota / lag(Cota,252)) - 1)*100, 2)) %>%
   mutate(var_ano = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100, 2)) %>%
@@ -41,6 +42,8 @@ tbl <- data[,c(1,2,5,6)] %>%
   arrange(desc(var_mes)) %>%
   rename(`% No mês ` = var_mes,
          `% No ano ` = var_ano)
+
+tbl
 
 # Visualização de dados ---------------------------------------------------
 

@@ -13,8 +13,8 @@ Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
 
-df <- rbind(yc_get(refdate = "2024-01-09"),
-            yc_get(refdate = "2024-01-19"))
+df <- rbind(yc_get(refdate = "2024-01-02"),
+            yc_get(refdate = "2024-02-07"))
 
 # Visualização de dados ---------------------------------------------------
 
@@ -36,6 +36,6 @@ df %>%
        caption = "Fonte: Capri FO com dados da B3",
        x = NULL, y = "Taxa de juros")
 
-ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
+ggsave("curva de juros.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
                                                                                                 "/Gráficos/Curva de juros",
                                                                                                 sep = ""))
