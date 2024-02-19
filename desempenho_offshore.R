@@ -45,33 +45,39 @@ str(df)
 # Tratamento de dados -----------------------------------------------------
 
 data <- df %>%
-  filter(date <= "2024-01-31") %>% 
-  pivot_longer(cols = -1) %>% 
+  pivot_longer(cols = -1, values_drop_na = TRUE) %>% 
+  arrange(name, date) %>%
   group_by(name) %>%
-  mutate(var_12M = round(((value / lag(value,252)) - 1)*100,2)) %>%
-  mutate(var_ano = round(((value / value[which(date == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(var_mes = round(((value / value[which(date == "2024-01-02")]) - 1)*100,2)) %>% 
-  na.omit()
+  mutate(var = (value/lag(value, 1) - 1) * 100,
+         acumulado_12_meses = (zoo::rollapply(1 + var/100, width = 252, FUN = prod, align = 'right', fill = NA) - 1)*100) %>%
+  group_by(name, year(date), month(date)) %>%
+  mutate(acumulado_mes = round((cumprod(1 + var/100) - 1) * 100, 2)) %>%
+  group_by(name, year(date)) %>%
+  mutate(acumulado_ano = round((cumprod(1 + var/100) - 1) * 100, 2)) %>% 
+  ungroup()
 
-tbl <- data[,c(1,2,5,6)] %>%
+tbl <- data[,-c(3,4,6,7)] %>%
+  arrange(desc(date)) %>%
   arrange(desc(date)) %>%
   group_by(name) %>%
   slice(1) %>%
   ungroup() %>%
   select(-date) %>%
-  arrange(desc(var_mes)) %>%
-  rename(`% No mês ` = var_mes,
-         `% No ano ` = var_ano)
+  arrange(desc(acumulado_mes)) %>%
+  rename(`Retorno acumulado no mês` = acumulado_mes,
+         `Retorno acumulado no ano` = acumulado_ano,
+         `Retorno acumulado em 12 meses` = acumulado_12_meses)
+
+tbl
 
 # Visualização de dados ---------------------------------------------------
 
 ## Variação anual -------------------------------------------------------
 
 data %>% 
-  na.omit() %>% 
-  filter(date >= "2018-01-01") %>%
+  filter(date >= last(data$date) - 360) %>% 
   ggplot() +
-  aes(date, var_12M, colour = name) +
+  aes(date, acumulado_12_meses, colour = name) +
   geom_line(linewidth = .75) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
@@ -102,12 +108,11 @@ data %>%
                                  "stip" = "STIP",
                                  "dxy" = "DXY")) +
   labs(title = "Índices", 
-       subtitle = "Variação anual",
+       subtitle = "Retorno acumulado em 12 meses",
        caption = "Fonte: Capri com dados da Quandl")
 
-ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
-                                                                                                "/Gráficos/Offshore",
-                                                                                                sep = ""))
+ggsave("acumulado em 12 meses.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste0(getwd(),
+                                                                                                       "/Gráficos/Offshore"))
 
 # ggsave("variacao anual.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
 #                                                                                                           "/Gráficos/Fundos",
@@ -116,10 +121,10 @@ ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 57
 ## Variação anual acumulada  -------------------------------------------------------
 
 data %>%
-  filter(date >= "2024-01-02") %>%
-  mutate(name = factor(name, levels = arrange(tbl, desc(`% No ano `))$name)) %>%
+  filter(date >= floor_date(Sys.Date(), "year")) %>%
+  mutate(name = factor(name, levels = arrange(tbl, desc(`Retorno acumulado no ano`))$name)) %>%
   ggplot() +
-  aes(date, var_ano, colour = name) +
+  aes(date, acumulado_ano, colour = name) +
   geom_line(linewidth = .75) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
@@ -138,32 +143,31 @@ data %>%
                                  "tip" = "#8057A5",
                                  "stip" = "#FF6F61",
                                  "dxy" = "#00796B"),
-                      labels = c("spx" = paste0("S&P: ", tbl$`% No ano `[which(tbl$name == "spx")], "%"),
-                                 "ndx" = paste0("Nasdaq: ", tbl$`% No ano `[which(tbl$name == "ndx")], "%"),
-                                 "rut" = paste0("Russell: ", tbl$`% No ano `[which(tbl$name == "rut")], "%"),
-                                 "dji" = paste0("Dow Jones: ", tbl$`% No ano `[which(tbl$name == "dji")], "%"),
-                                 "agg" = paste0("AAG: ", tbl$`% No ano `[which(tbl$name == "agg")], "%"),
-                                 "hg" = paste0("HG: ", tbl$`% No ano `[which(tbl$name == "hg")], "%"),
-                                 "hy" = paste0("HY: ", tbl$`% No ano `[which(tbl$name == "hy")], "%"),
-                                 "sgov" = paste0("SGOV: ", tbl$`% No ano `[which(tbl$name == "sgov")], "%"),
-                                 "tip" = paste0("TIP: ", tbl$`% No ano `[which(tbl$name == "tip")], "%"),
-                                 "stip" = paste0("STIP: ", tbl$`% No ano `[which(tbl$name == "stip")], "%"),
-                                 "dxy" = paste0("DXY: ", tbl$`% No ano `[which(tbl$name == "dxy")], "%"))) +
+                      labels = c("spx" = paste0("S&P: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "spx")], "%"),
+                                 "ndx" = paste0("Nasdaq: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "ndx")], "%"),
+                                 "rut" = paste0("Russell: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "rut")], "%"),
+                                 "dji" = paste0("Dow Jones: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "dji")], "%"),
+                                 "agg" = paste0("AAG: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "agg")], "%"),
+                                 "hg" = paste0("HG: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "hg")], "%"),
+                                 "hy" = paste0("HY: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "hy")], "%"),
+                                 "sgov" = paste0("SGOV: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "sgov")], "%"),
+                                 "tip" = paste0("TIP: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "tip")], "%"),
+                                 "stip" = paste0("STIP: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "stip")], "%"),
+                                 "dxy" = paste0("DXY: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "dxy")], "%"))) +
   labs(title = NULL,
-       subtitle = "Variação acumulada no ano", 
+       subtitle = "Retorno acumulado no ano", 
        caption = "Fonte: Capri com dados da Quandl")
 
-ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
-                                                                                                          "/Gráficos/Offshore",
-                                                                                                          sep = ""))
+ggsave("retorno anual acumulado.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste0(getwd(),
+                                                                                                          "/Gráficos/Offshore"))
 
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>%
-  filter(date >= "2024-01-01") %>%
-  mutate(name = factor(name, levels = arrange(tbl, desc(`% No mês `))$name)) %>%
+  filter(date >= floor_date(Sys.Date(), "month")) %>%
+  mutate(name = factor(name, levels = arrange(tbl, desc(`Retorno acumulado no mês`))$name)) %>%
   ggplot() +
-  aes(date, var_mes, colour = name) +
+  aes(date, acumulado_mes, colour = name) +
   geom_line(linewidth = .75) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.line = element_line(colour = "black"),
@@ -182,21 +186,20 @@ data %>%
                                  "tip" = "#8057A5",
                                  "stip" = "#FF6F61",
                                  "dxy" = "#00796B"),
-                      labels = c("spx" = paste0("S&P: ", tbl$`% No mês `[which(tbl$name == "spx")], "%"),
-                                 "ndx" = paste0("Nasdaq: ", tbl$`% No mês `[which(tbl$name == "ndx")], "%"),
-                                 "rut" = paste0("Russell: ", tbl$`% No mês `[which(tbl$name == "rut")], "%"),
-                                 "dji" = paste0("Dow Jones: ", tbl$`% No mês `[which(tbl$name == "dji")], "%"),
-                                 "agg" = paste0("AAG: ", tbl$`% No mês `[which(tbl$name == "agg")], "%"),
-                                 "hg" = paste0("HG: ", tbl$`% No mês `[which(tbl$name == "hg")], "%"),
-                                 "hy" = paste0("HY: ", tbl$`% No mês `[which(tbl$name == "hy")], "%"),
-                                 "sgov" = paste0("SGOV: ", tbl$`% No mês `[which(tbl$name == "sgov")], "%"),
-                                 "tip" = paste0("TIP: ", tbl$`% No mês `[which(tbl$name == "tip")], "%"),
-                                 "stip" = paste0("STIP: ", tbl$`% No mês `[which(tbl$name == "stip")], "%"),
-                                 "dxy" = paste0("DXY: ", tbl$`% No mês `[which(tbl$name == "dxy")], "%"))) +
+                      labels = c("spx" = paste0("S&P: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "spx")], "%"),
+                                 "ndx" = paste0("Nasdaq: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "ndx")], "%"),
+                                 "rut" = paste0("Russell: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "rut")], "%"),
+                                 "dji" = paste0("Dow Jones: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "dji")], "%"),
+                                 "agg" = paste0("AAG: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "agg")], "%"),
+                                 "hg" = paste0("HG: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "hg")], "%"),
+                                 "hy" = paste0("HY: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "hy")], "%"),
+                                 "sgov" = paste0("SGOV: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "sgov")], "%"),
+                                 "tip" = paste0("TIP: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "tip")], "%"),
+                                 "stip" = paste0("STIP: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "stip")], "%"),
+                                 "dxy" = paste0("DXY: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "dxy")], "%"))) +
   labs(title = NULL,
-       subtitle = "Variação acumulada no mês", 
+       subtitle = "Retorno acumulado no mês", 
        caption = "Fonte: Capri com dados da Quandl")
 
-ggsave("variacao mensal acumulada.png", width = 9720, height = 3920, units = "px", dpi = 1152, path = paste(getwd(),
-                                                                                                            "/Gráficos/Offshore",
-                                                                                                            sep = ""))
+ggsave("retorno acumulado no mês.png", width = 9720, height = 3920, units = "px", dpi = 1152, path = paste0(getwd(),
+                                                                                                    "/Gráficos/Offshore"))

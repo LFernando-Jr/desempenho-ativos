@@ -23,25 +23,31 @@ class(df)
 
 # Estrutura
 str(df)
+glimpse(df)
 
 # Tratamento de dados -----------------------------------------------------
 
-data <- df %>%
-  filter(Data <= "2024-01-31") %>% 
-  group_by(Ativo) %>%
-  mutate(var_12M = round(((Cota / lag(Cota,252)) - 1)*100, 2)) %>%
-  mutate(var_ano = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100, 2)) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100, 2))
+data <- df %>% 
+  arrange(Ativo, Data) %>%
+  group_by(Ativo) %>% 
+  mutate(var = (Cota/lag(Cota, 1) - 1) * 100,
+         acumulado_12_meses = (zoo::rollapply(1 + var/100, width = 252, FUN = prod, align = 'right', fill = NA) - 1)*100) %>%
+  group_by(Ativo, year(Data), month(Data)) %>%
+  mutate(acumulado_mes = round((cumprod(1 + var/100) - 1) * 100, 2)) %>%
+  group_by(Ativo, year(Data)) %>%
+  mutate(acumulado_ano = round((cumprod(1 + var/100) - 1) * 100, 2)) %>% 
+  ungroup()
 
-tbl <- data[,c(1,2,5,6)] %>%
+tbl <- data[,-c(3,4,6,7)] %>%
   arrange(desc(Data)) %>%
   group_by(`Ativo`) %>%
   slice(1) %>%
   ungroup() %>%
   select(-Data) %>%
-  arrange(desc(var_mes)) %>%
-  rename(`% No mês ` = var_mes,
-         `% No ano ` = var_ano)
+  arrange(desc(acumulado_mes)) %>%
+  rename(`Retorno acumulado no mês` = acumulado_mes,
+         `Retorno acumulado no ano` = acumulado_ano,
+         `Retorno acumulado em 12 meses` = acumulado_12_meses)
 
 tbl
 
@@ -50,18 +56,19 @@ tbl
 ## Variação anual -------------------------------------------------------
 
 data %>% 
-  filter(Data >= "2018-01-01") %>%
+  filter(Data >= last(data$Data) - 360,
+         !(Ativo %in% c("IDA-IPCA Infraestrutura", "Idex-Infra Geral JGP"))) %>%
   ggplot() +
   geom_line(data = . %>% filter(Ativo != "CDI"), 
-            aes(Data, var_12M, colour = Ativo), linewidth = .75) +
+            aes(Data, acumulado_12_meses, colour = Ativo), linewidth = .75) +
   geom_line(data = . %>% filter(Ativo == "CDI"), 
-            aes(Data, var_12M, colour = "CDI"), linewidth = .5, linetype = "longdash") +
+            aes(Data, acumulado_12_meses, colour = "CDI"), linewidth = .5, linetype = "longdash") +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), date_labels = "%b/%Y", breaks = "6 months",) +
+  scale_x_date(expand = c(0,0), date_labels = "%b/%Y", breaks = "3 months",) +
   scale_colour_manual(values = c("black",
                                  "#FF6F61",
                                  "#2F47AD",
@@ -73,12 +80,11 @@ data %>%
                                  "#D4A83F",
                                  "#8057A5")) +
   labs(title = "Índices", 
-       subtitle = "Variação anual",
+       subtitle = "Retorno acumulado em 12 meses",
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
-                                                                                                "/Gráficos/Índices",
-                                                                                                sep = ""))
+ggsave("acumulado em 12 mesess.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste0(getwd(),
+                                                                                                        "/Gráficos/Índices"))
 
 # ggsave("variacao anual.png", width = 15, height = 8.661, units = "in", dpi = 800, path = paste(getwd(),
 #                                                                                                           "/Gráficos/Fundos",
@@ -86,11 +92,11 @@ ggsave("variacao anual.png", width = 4800, height = 2160, units = "px", dpi = 57
 
 ## Variação anual acumulada  -------------------------------------------------------
 
-data %>%
-  filter(Data >= "2024-01-01") %>%
-  mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No ano `))$Ativo)) %>%
+data %>% 
+  filter(Data >= floor_date(Sys.Date(), "year")) %>%
+  mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`Retorno acumulado no ano`))$Ativo)) %>%
   ggplot() +
-  aes(Data, var_ano, colour = Ativo, linetype = Ativo) +
+  aes(Data, acumulado_ano, colour = Ativo, linetype = Ativo) +
   geom_line(linewidth = .75) +
   theme_bw() + theme(panel.grid.minor = element_blank(), 
                      axis.line = element_line(colour = "black"),
@@ -100,26 +106,26 @@ data %>%
   scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months") +
   scale_colour_manual(values = c("Ibovespa" = "#2F47AD",
                                  "CDI" = "black",
-                                 "IDA-DI" = "#8C977D",
+                                 "Idex-Infra Geral JGP" = "#8C977D",
                                  "Idex-CDI Geral JGP" = "#31AFE0",
                                  "IHFA" = "#E47632",
                                  "IMA-B" = "#AD4728",
                                  "IMA-B 5" = "#3BA58B",
                                  "IRF-M" = "#D4A83F",
                                  "Dólar" = "#FF6F61"),
-                      labels = c("Ibovespa" = paste0("Ibovespa: ", tbl$`% No ano `[which(tbl$Ativo == "Ibovespa")], "%"),
-                               "CDI" = paste0("CDI: ", tbl$`% No ano `[which(tbl$Ativo == "CDI")], "%"),
-                               "IDA-DI" = paste0("IDA-DI: ", tbl$`% No ano `[which(tbl$Ativo == "IDA-DI")], "%"),
-                               "Idex-CDI Geral JGP" = paste0("IDEX: ", tbl$`% No ano `[which(tbl$Ativo == "Idex-CDI Geral JGP")], "%"),
-                               "IHFA" = paste0("IHFA: ", tbl$`% No ano `[which(tbl$Ativo == "IHFA")], "%"),
-                               "IMA-B" = paste0("IMA-B: ", tbl$`% No ano `[which(tbl$Ativo == "IMA-B")], "%"),
-                               "IMA-B 5" = paste0("IMA-B 5: ", tbl$`% No ano `[which(tbl$Ativo == "IMA-B 5")], "%"),
-                               "IRF-M" = paste0("IRF-M: ", tbl$`% No ano `[which(tbl$Ativo == "IRF-M")], "%"),
-                               "Dólar" = paste0("Dólar: ", tbl$`% No ano `[which(tbl$Ativo == "Dólar")], "%"))) +
+                      labels = c("Ibovespa" = paste0("Ibovespa: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "Ibovespa")], "%"),
+                               "CDI" = paste0("CDI: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "CDI")], "%"),
+                               "Idex-Infra Geral JGP" = paste0("IDEX-Infra: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "Idex-Infra Geral JGP")], "%"),
+                               "Idex-CDI Geral JGP" = paste0("IDEX: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "Idex-CDI Geral JGP")], "%"),
+                               "IHFA" = paste0("IHFA: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "IHFA")], "%"),
+                               "IMA-B" = paste0("IMA-B: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "IMA-B")], "%"),
+                               "IMA-B 5" = paste0("IMA-B 5: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "IMA-B 5")], "%"),
+                               "IRF-M" = paste0("IRF-M: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "IRF-M")], "%"),
+                               "Dólar" = paste0("Dólar: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "Dólar")], "%"))) +
   scale_linetype_manual(values = c("CDI" = "longdash", 
                                    "Ibovespa" = "solid",
                                    "CDI" = "solid",
-                                   "IDA-DI" = "solid",
+                                   "Idex-Infra Geral JGP" = "solid",
                                    "Idex-CDI Geral JGP" = "solid",
                                    "IHFA" = "solid",
                                    "IMA-B" = "solid",
@@ -128,20 +134,19 @@ data %>%
                                    "Dólar" = "solid")) +
   guides(linetype = "none") +
   labs(title = NULL,
-       subtitle = "Variação acumulada no ano", 
+       subtitle = "Retorno acumulado no ano", 
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
-                                                                                                          "/Gráficos/Índices",
-                                                                                                          sep = ""))
+ggsave("retorno anual acumulado.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste0(getwd(),
+                                                                                                         "/Gráficos/Índices"))
 
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>%
-  filter(Data >= "2024-01-01") %>%
-  mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No mês `))$Ativo)) %>%
+  filter(Data >= floor_date(Sys.Date(), "month")) %>%
+  mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`Retorno acumulado no mês`))$Ativo)) %>%
   ggplot() +
-  aes(Data, var_mes, colour = Ativo, linetype = Ativo) +
+  aes(Data, acumulado_mes, colour = Ativo, linetype = Ativo) +
   geom_line(linewidth = .75) +
   theme_bw() + theme(panel.grid.minor = element_blank(),
                      axis.line = element_line(colour = "black"),
@@ -151,26 +156,26 @@ data %>%
   scale_x_date(expand = c(0,0), date_labels = "%d", breaks = "1 day",) +
   scale_colour_manual(values = c("Ibovespa" = "#2F47AD",
                                  "CDI" = "black",
-                                 "IDA-DI" = "#8C977D",
+                                 "Idex-Infra Geral JGP" = "#8C977D",
                                  "Idex-CDI Geral JGP" = "#31AFE0",
                                  "IHFA" = "#E47632",
                                  "IMA-B" = "#AD4728",
                                  "IMA-B 5" = "#3BA58B",
                                  "IRF-M" = "#D4A83F",
                                  "Dólar" = "#FF6F61"),
-                      labels = c("Ibovespa" = paste0("Ibovespa: ", tbl$`% No mês `[which(tbl$Ativo == "Ibovespa")], "%"),
-                                 "CDI" = paste0("CDI: ", tbl$`% No mês `[which(tbl$Ativo == "CDI")], "%"),
-                                 "IDA-DI" = paste0("IDA-DI: ", tbl$`% No mês `[which(tbl$Ativo == "IDA-DI")], "%"),
-                                 "Idex-CDI Geral JGP" = paste0("IDEX: ", tbl$`% No mês `[which(tbl$Ativo == "Idex-CDI Geral JGP")], "%"),
-                                 "IHFA" = paste0("IHFA: ", tbl$`% No mês `[which(tbl$Ativo == "IHFA")], "%"),
-                                 "IMA-B" = paste0("IMA-B: ", tbl$`% No mês `[which(tbl$Ativo == "IMA-B")], "%"),
-                                 "IMA-B 5" = paste0("IMA-B 5: ", tbl$`% No mês `[which(tbl$Ativo == "IMA-B 5")], "%"),
-                                 "IRF-M" = paste0("IRF-M: ", tbl$`% No ano `[which(tbl$Ativo == "IRF-M")], "%"),
-                                 "Dólar" = paste0("Dólar: ", tbl$`% No ano `[which(tbl$Ativo == "Dólar")], "%"))) +
+                      labels = c("Ibovespa" = paste0("Ibovespa: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "Ibovespa")], "%"),
+                                 "CDI" = paste0("CDI: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "CDI")], "%"),
+                                 "Idex-Infra Geral JGP" = paste0("Idex-Infra: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "Idex-Infra Geral JGP")], "%"),
+                                 "Idex-CDI Geral JGP" = paste0("IDEX: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "Idex-CDI Geral JGP")], "%"),
+                                 "IHFA" = paste0("IHFA: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IHFA")], "%"),
+                                 "IMA-B" = paste0("IMA-B: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IMA-B")], "%"),
+                                 "IMA-B 5" = paste0("IMA-B 5: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IMA-B 5")], "%"),
+                                 "IRF-M" = paste0("IRF-M: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "IRF-M")], "%"),
+                                 "Dólar" = paste0("Dólar: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "Dólar")], "%"))) +
   scale_linetype_manual(values = c("CDI" = "longdash", 
                                    "Ibovespa" = "solid",
                                    "CDI" = "solid",
-                                   "IDA-DI" = "solid",
+                                   "Idex-Infra Geral JGP" = "solid",
                                    "Idex-CDI Geral JGP" = "solid",
                                    "IHFA" = "solid",
                                    "IMA-B" = "solid",
@@ -179,9 +184,8 @@ data %>%
                                    "Dólar" = "solid")) +
   guides(linetype = "none") +
   labs(title = NULL,
-       subtitle = "Variação acumulada no mês", 
+       subtitle = "Retorno acumulado no mês", 
        caption = "Fonte: Capri com dados da Quantum Axis")
 
-ggsave("variacao mensal acumulada.png", width = 9720, height = 3920, units = "px", dpi = 1152, path = paste(getwd(),
-                                                                                                           "/Gráficos/Índices",
-                                                                                                           sep = ""))
+ggsave("retorno mensal acumulado.png", width = 9720, height = 3920, units = "px", dpi = 1152, path = paste0(getwd(),
+                                                                                                            "/Gráficos/Índices"))

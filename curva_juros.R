@@ -13,8 +13,8 @@ Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
 
-df <- rbind(yc_get(refdate = "2024-01-02"),
-            yc_get(refdate = "2024-02-07"))
+df <- rbind(yc_get(refdate = "2024-02-07"),
+            yc_get(refdate = "2024-02-16"))
 
 # Visualização de dados ---------------------------------------------------
 
