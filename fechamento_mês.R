@@ -23,11 +23,11 @@ onshore <- readxl::read_excel(paste0(getwd(), "/Dados/index.xlsx"), sheet = 1) %
                  "Cota")) %>%
   mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
 
-getSymbols(c("^SPX", "^DJI", "^RUT", "^NDX", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
+getSymbols(c("^SPX", "^DJI", "^RUT", "^IXIC", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
 getSymbols(c("BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
 
 SPX <- data.frame(date = as.Date(rownames(SPX)), SPX[,4])
-NDX <- data.frame(date = as.Date(rownames(NDX)), NDX[,4])
+IXIC <- data.frame(date = as.Date(rownames(IXIC)), IXIC[,4])
 DJI <- data.frame(date = as.Date(rownames(DJI)), DJI[,4])
 RUT <- data.frame(date = as.Date(rownames(RUT)), RUT[,4])
 AGG <- data.frame(date = as.Date(rownames(AGG)), AGG[,6])
@@ -38,9 +38,9 @@ DXY <- data.frame(date = as.Date(rownames(`DX-Y.NYB`)), `DX-Y.NYB`[,4])
 HG <- data.frame(date = as.Date(rownames(BAMLCC0A0CMTRIV)), BAMLCC0A0CMTRIV)
 HY <- data.frame(date = as.Date(rownames(BAMLHYH0A0HYM2TRIV)), BAMLHYH0A0HYM2TRIV)
 
-offshore <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, NDX, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, HG, HY))
+offshore <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, IXIC, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, HG, HY))
 offshore <- offshore %>% 
-  `colnames<-`(c("date", "SPX", "NDX", "DJI", "RUT", "AGG", "TIP", "STIP", "SGOV", "DXY", "HG", "HY")) %>% 
+  `colnames<-`(c("date", "SPX", "IXIC", "DJI", "RUT", "AGG", "TIP", "STIP", "SGOV", "DXY", "HG", "HY")) %>% 
   pivot_longer(cols = -1, 
                names_to = "Ativo",
                values_to = "Cota") %>% 
@@ -54,13 +54,13 @@ df <- rbind(onshore, offshore) %>%
 class(df)
 
 # Estrutura
-str(df)
+glimpse(df)
 
 # Tratamento de dados -----------------------------------------------------
 
 data <- df %>%
   group_by(Ativo) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100, 2),
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-01-31")]) - 1)*100, 2),
          var_anualizado = ((1 + var_mes/100)^12 - 1) * 100)
 
 tbl <- data %>%
@@ -70,8 +70,8 @@ tbl <- data %>%
   ungroup() %>%
   select(-Data) %>%
   arrange(desc(var_mes)) %>%
-  rename(`% Acumulado No mes ` = var_mes,
-         `% Acumulado No mes Anualizado` = var_anualizado,
+  rename(`Var% no mes` = var_mes,
+         `Var% no mes anualizado` = var_anualizado,
          `Numero Indice` = Cota)
 
 tbl

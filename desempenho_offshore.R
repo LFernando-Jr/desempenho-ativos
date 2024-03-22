@@ -16,11 +16,11 @@ Quandl.api_key('on_Vk-ogkmufJBMudwhZ')
 
 # Coleta de dados ---------------------------------------------------------
 
-getSymbols(c("^SPX", "^DJI", "^RUT", "^NDX", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
+getSymbols(c("^SPX", "^DJI", "^RUT", "^IXIC", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
 getSymbols(c("BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
 
 SPX <- data.frame(date = as.Date(rownames(SPX)), SPX[,4])
-NDX <- data.frame(date = as.Date(rownames(NDX)), NDX[,4])
+IXIC <- data.frame(date = as.Date(rownames(IXIC)), IXIC[,4])
 DJI <- data.frame(date = as.Date(rownames(DJI)), DJI[,4])
 RUT <- data.frame(date = as.Date(rownames(RUT)), RUT[,4])
 AGG <- data.frame(date = as.Date(rownames(AGG)), AGG[,6])
@@ -31,16 +31,16 @@ DXY <- data.frame(date = as.Date(rownames(`DX-Y.NYB`)), `DX-Y.NYB`[,4])
 HG <- data.frame(date = as.Date(rownames(BAMLCC0A0CMTRIV)), BAMLCC0A0CMTRIV)
 HY <- data.frame(date = as.Date(rownames(BAMLHYH0A0HYM2TRIV)), BAMLHYH0A0HYM2TRIV)
 
-df <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, NDX, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, HG, HY))
+df <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, IXIC, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, HG, HY))
 df <- df %>% 
-  `colnames<-`(c("date", "spx", "ndx", "dji", "rut", "agg", "tip", "stip", "sgov", "dxy", "hg", "hy")) %>% 
+  `colnames<-`(c("date", "spx", "ixic", "dji", "rut", "agg", "tip", "stip", "sgov", "dxy", "hg", "hy")) %>% 
   as_tibble()
 
 # Classe
 class(df)
 
 # Estrutura
-str(df)
+glimpse(df)
 
 # Tratamento de dados -----------------------------------------------------
 
@@ -57,6 +57,7 @@ data <- df %>%
   ungroup()
 
 tbl <- data[,-c(3,4,6,7)] %>%
+  # filter(date <= "2024-02-29") %>% 
   arrange(desc(date)) %>%
   arrange(desc(date)) %>%
   group_by(name) %>%
@@ -84,9 +85,9 @@ data %>%
                      legend.title = element_blank(), 
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
-  scale_x_date(expand = c(0,0), date_labels = "%Y", breaks = "12 months") +
+  scale_x_date(expand = c(0,0), date_labels = "%b-%y", breaks = "1 months") +
   scale_colour_manual(values = c("spx" = "#2F47AD",
-                                 "ndx" = "black",
+                                 "ixic" = "black",
                                  "rut" = "#8C977D",
                                  "dji" = "#31AFE0",
                                  "agg" = "#E47632",
@@ -97,7 +98,7 @@ data %>%
                                  "stip" = "#FF6F61",
                                  "dxy" = "#00796B"),
                       labels = c("spx" = "S&P",
-                                 "ndx" = "Nasdaq",
+                                 "ixic" = "Nasdaq",
                                  "rut" = "Russell",
                                  "dji" = "Dow Jones",
                                  "agg" = "AAG",
@@ -133,7 +134,7 @@ data %>%
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months") +
   scale_colour_manual(values = c("spx" = "#2F47AD",
-                                 "ndx" = "black",
+                                 "ixic" = "black",
                                  "rut" = "#8C977D",
                                  "dji" = "#31AFE0",
                                  "agg" = "#E47632",
@@ -144,7 +145,7 @@ data %>%
                                  "stip" = "#FF6F61",
                                  "dxy" = "#00796B"),
                       labels = c("spx" = paste0("S&P: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "spx")], "%"),
-                                 "ndx" = paste0("Nasdaq: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "ndx")], "%"),
+                                 "ixic" = paste0("Nasdaq: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "ixic")], "%"),
                                  "rut" = paste0("Russell: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "rut")], "%"),
                                  "dji" = paste0("Dow Jones: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "dji")], "%"),
                                  "agg" = paste0("AAG: ", tbl$`Retorno acumulado no ano`[which(tbl$name == "agg")], "%"),
@@ -165,6 +166,7 @@ ggsave("retorno anual acumulado.png", width = 4800, height = 2160, units = "px",
 
 data %>%
   filter(date >= floor_date(Sys.Date(), "month")) %>%
+  # filter(date >= as.Date("2024-02-01") & date < floor_date(Sys.Date(), "month")) %>%
   mutate(name = factor(name, levels = arrange(tbl, desc(`Retorno acumulado no mês`))$name)) %>%
   ggplot() +
   aes(date, acumulado_mes, colour = name) +
@@ -176,7 +178,7 @@ data %>%
                      strip.background = element_blank()) +
   scale_x_date(expand = c(0,0), date_labels = "%d", breaks = "1 day",) +
   scale_colour_manual(values = c("spx" = "#2F47AD",
-                                 "ndx" = "black",
+                                 "ixic" = "black",
                                  "rut" = "#8C977D",
                                  "dji" = "#31AFE0",
                                  "agg" = "#E47632",
@@ -187,7 +189,7 @@ data %>%
                                  "stip" = "#FF6F61",
                                  "dxy" = "#00796B"),
                       labels = c("spx" = paste0("S&P: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "spx")], "%"),
-                                 "ndx" = paste0("Nasdaq: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "ndx")], "%"),
+                                 "ixic" = paste0("Nasdaq: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "ixic")], "%"),
                                  "rut" = paste0("Russell: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "rut")], "%"),
                                  "dji" = paste0("Dow Jones: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "dji")], "%"),
                                  "agg" = paste0("AAG: ", tbl$`Retorno acumulado no mês`[which(tbl$name == "agg")], "%"),

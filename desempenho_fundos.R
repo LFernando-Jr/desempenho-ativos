@@ -39,7 +39,7 @@ df <- inner_join(df, cdi)
 class(df)
 
 # Estrutura
-str(df)
+glimpse(df)
 
 # Tratamento de dados -----------------------------------------------------
 
@@ -48,11 +48,11 @@ data <- df %>%
   #fundos
   mutate(var_36M = round(((Cota / lag(Cota,252*3)) - 1)*100,2)) %>%
   mutate(var_ano = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-02-01")]) - 1)*100,2)) %>%
   #cdi
   mutate(cdi_36M = round(((CDI / lag(CDI,252*3)) - 1)*100,2)) %>%
   mutate(cdi_ano = round(((CDI / CDI[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
+  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-02-01")]) - 1)*100,2)) %>%
   #excesso
   mutate(excess_var_36M = var_36M - cdi_36M) %>%
   mutate(excess_var_ano = var_ano - cdi_ano) %>%
@@ -176,7 +176,7 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>% 
-  filter(Data >= "2024-01-01") %>%
+  filter(Data >= "2024-03-01") %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No mês `))$Ativo)) %>%
   ggplot() +
   aes(Data, excess_var_mes, colour = Ativo, linetype = Ativo) +

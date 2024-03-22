@@ -22,7 +22,6 @@ df <- readxl::read_excel(paste0(getwd(), "/Dados/index.xlsx"), sheet = 1) %>%
 class(df)
 
 # Estrutura
-str(df)
 glimpse(df)
 
 # Tratamento de dados -----------------------------------------------------
@@ -39,6 +38,7 @@ data <- df %>%
   ungroup()
 
 tbl <- data[,-c(3,4,6,7)] %>%
+  # filter(Data <= "2024-02-29") %>%
   arrange(desc(Data)) %>%
   group_by(`Ativo`) %>%
   slice(1) %>%
@@ -57,7 +57,7 @@ tbl
 
 data %>% 
   filter(Data >= last(data$Data) - 360,
-         !(Ativo %in% c("IDA-IPCA Infraestrutura", "Idex-Infra Geral JGP"))) %>%
+         !(Ativo %in% c("IDA-IPCA Infraestrutura", "IDA-DI"))) %>%
   ggplot() +
   geom_line(data = . %>% filter(Ativo != "CDI"), 
             aes(Data, acumulado_12_meses, colour = Ativo), linewidth = .75) +
@@ -144,6 +144,7 @@ ggsave("retorno anual acumulado.png", width = 4800, height = 2160, units = "px",
 
 data %>%
   filter(Data >= floor_date(Sys.Date(), "month")) %>%
+  # filter(Data >= as.Date("2024-02-01") & Data < floor_date(Sys.Date(), "month")) %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`Retorno acumulado no mês`))$Ativo)) %>%
   ggplot() +
   aes(Data, acumulado_mes, colour = Ativo, linetype = Ativo) +
@@ -170,8 +171,8 @@ data %>%
                                  "IHFA" = paste0("IHFA: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IHFA")], "%"),
                                  "IMA-B" = paste0("IMA-B: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IMA-B")], "%"),
                                  "IMA-B 5" = paste0("IMA-B 5: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IMA-B 5")], "%"),
-                                 "IRF-M" = paste0("IRF-M: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "IRF-M")], "%"),
-                                 "Dólar" = paste0("Dólar: ", tbl$`Retorno acumulado no ano`[which(tbl$Ativo == "Dólar")], "%"))) +
+                                 "IRF-M" = paste0("IRF-M: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "IRF-M")], "%"),
+                                 "Dólar" = paste0("Dólar: ", tbl$`Retorno acumulado no mês`[which(tbl$Ativo == "Dólar")], "%"))) +
   scale_linetype_manual(values = c("CDI" = "longdash", 
                                    "Ibovespa" = "solid",
                                    "CDI" = "solid",
