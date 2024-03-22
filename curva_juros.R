@@ -3,7 +3,6 @@
 
 library(tidyverse)
 library(YieldCurve)
-library(termstrc)
 library(rb3)
 
 # Setup -------------------------------------------------------------------
@@ -29,7 +28,7 @@ df %>%
   geom_line()
 
 
-SvenssonParameters <- Svensson(df$r_252, df$cur_days)
+SvenssonParameters <- Svensson(df$r_252, df$cur_days/30)
 Svensson.rate <- Srates(SvenssonParameters, maturity.ECB, "Spot")
 
 
