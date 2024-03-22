@@ -18,8 +18,7 @@ df <- rbind(
   # yc_get(refdate = "2024-01-02"),
   # yc_get(refdate = "2024-02-01"),
             # yc_get(refdate = Sys.Date() - 2),
-            yc_get(refdate = Sys.Date() - 1)) %>% 
-  filter(cur_days <= 3600)
+            yc_get(refdate = Sys.Date() - 1))
 
 
 df %>%
@@ -29,13 +28,20 @@ df %>%
 
 
 SvenssonParameters <- Svensson(df$r_252, df$cur_days/30)
-Svensson.rate <- Srates(SvenssonParameters, maturity.ECB, "Spot")
+Svensson.rate <- Srates(SvenssonParameters, df$cur_days/30, "Spot")
 
+data(ECBYieldCurve)
+rate.ECB = first(ECBYieldCurve,'2 day')
+maturity.ECB = c(0.25,0.5,seq(1,30,by=1))
+SvenssonParameters <- Svensson(rate.ECB, maturity.ECB)
+Svensson.rate <- Srates(SvenssonParameters ,maturity.ECB,"Spot")
 
-
-
-
-
+plot(maturity.ECB, last(rate.ECB,'1 day'),main="Fitting Svensson yield curve",
+     xlab=c("Pillars in years"), ylab=c("Rates"),type="o")
+lines(maturity.ECB, last(Svensson.rate,'1 day'), col=2)
+legend("topleft",legend=c("observed yield curve","fitted yield curve"),
+       col=c(1,2),lty=1)
+grid()
 
 
 
