@@ -20,9 +20,8 @@ Quandl.api_key('on_Vk-ogkmufJBMudwhZ')
 getSymbols(c("^SPX", "^DJI", "^RUT", "^IXIC", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
 getSymbols(c("BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
 
-getSymbols(c("^SPX", "^DJI", "^RUT", "^NDX", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
-getSymbols(c("DGS2","DGS10", "BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
-
+# getSymbols(c("^SPX", "^DJI", "^RUT", "^IXIC", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
+# getSymbols(c("DGS2","DGS10", "BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
 
 SPX <- data.frame(date = as.Date(rownames(SPX)), SPX[,4])
 IXIC <- data.frame(date = as.Date(rownames(IXIC)), IXIC[,4])
@@ -33,20 +32,20 @@ TIP <- data.frame(date = as.Date(rownames(TIP)), TIP[,6])
 STIP <- data.frame(date = as.Date(rownames(STIP)), STIP[,6])
 SGOV <- data.frame(date = as.Date(rownames(SGOV)), SGOV[,6])
 DXY <- data.frame(date = as.Date(rownames(`DX-Y.NYB`)), `DX-Y.NYB`[,4])
-DGS2 <- data.frame(date = as.Date(rownames(DGS2)), DGS2)[,-c(2,3)]
-DGS10 <- data.frame(date = as.Date(rownames(DGS10)), DGS10)[,-c(2,3)]
+# DGS2 <- data.frame(date = as.Date(rownames(DGS2)), DGS2)[,c(2,3)]
+# DGS10 <- data.frame(date = as.Date(rownames(DGS10)), DGS10)[,c(2,3)]
 HG <- data.frame(date = as.Date(rownames(BAMLCC0A0CMTRIV)), BAMLCC0A0CMTRIV)
 HY <- data.frame(date = as.Date(rownames(BAMLHYH0A0HYM2TRIV)), BAMLHYH0A0HYM2TRIV)
-
 
 df <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, IXIC, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, HG, HY))
 df <- df %>% 
   `colnames<-`(c("date", "spx", "ixic", "dji", "rut", "agg", "tip", "stip", "sgov", "dxy", "hg", "hy")) %>% 
-
-df <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, NDX, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, DGS2, DGS10, HG, HY))
-df <- df %>% 
-  `colnames<-`(c("date", "spx", "ndx", "dji", "rut", "agg", "tip", "stip", "sgov", "dxy", "DGS2", "DGS10", "hg", "hy")) %>% 
   as_tibble()
+
+# df <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, IXIC, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, DGS2, DGS10, HG, HY))
+# df <- df %>% 
+#   `colnames<-`(c("date", "spx", "ndx", "dji", "rut", "agg", "tip", "stip", "sgov", "dxy", "DGS2", "DGS10", "hg", "hy")) %>% 
+#   as_tibble()
 
 # Classe
 class(df)

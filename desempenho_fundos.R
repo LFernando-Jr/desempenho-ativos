@@ -48,15 +48,15 @@ data <- df %>%
   #fundos
   mutate(var_36M = round(((Cota / lag(Cota,252*3)) - 1)*100,2)) %>%
   mutate(var_ano = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-02-01")]) - 1)*100,2)) %>%
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-02-29")]) - 1)*100,2)) %>%
   #cdi
   mutate(cdi_36M = round(((CDI / lag(CDI,252*3)) - 1)*100,2)) %>%
   mutate(cdi_ano = round(((CDI / CDI[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-02-01")]) - 1)*100,2)) %>%
+  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-02-29")]) - 1)*100,2)) %>%
   #excesso
-  mutate(excess_var_36M = var_36M - cdi_36M) %>%
-  mutate(excess_var_ano = var_ano - cdi_ano) %>%
-  mutate(excess_var_mes = var_mes - cdi_mes)
+  mutate(excess_var_36M = ((1 + var_36M/100)/(1 + cdi_36M/100) - 1)*100) %>%
+  mutate(excess_var_ano = ((1 + var_ano/100)/(1 + cdi_ano/100) - 1)*100) %>%
+  mutate(excess_var_mes = ((1 + var_mes/100)/(1 + cdi_mes/100) - 1)*100)
 
 tbl <- data[,c(1,2,11,12,13)] %>%
   arrange(desc(Data)) %>%
