@@ -18,7 +18,11 @@ df <- rbind(
   # yc_get(refdate = "2024-01-02"),
   # yc_get(refdate = "2024-02-01"),
             # yc_get(refdate = Sys.Date() - 2),
-            yc_get(refdate = Sys.Date() - 1))
+            yc_get(refdate = Sys.Date() - 1),
+            yc_get(refdate = Sys.Date() - 7))
+
+df[,c(1,2,5)] %>% 
+  tsibble::as_tsibble(index = refdate, key = cur_days) %>% class()
 
 
 df %>%

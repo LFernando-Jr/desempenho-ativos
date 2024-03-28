@@ -18,12 +18,6 @@ df <- readxl::read_excel(paste0(getwd(), "/Dados/index.xlsx"), sheet = 1) %>%
                  "Cota")) %>%
   mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
 
-df <- readxl::read_excel("C:/Users/nandd/Downloads/index.xlsx", sheet = 1) %>%
-  `colnames<-`(c("Ativo",
-                 "Data",
-                 "Cota")) %>%
-  mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
-
 # Classe
 class(df)
 
