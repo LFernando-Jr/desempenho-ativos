@@ -21,18 +21,43 @@ df <- rbind(
             yc_get(refdate = Sys.Date() - 1),
             yc_get(refdate = Sys.Date() - 7))
 
-df[,c(1,2,5)] %>% 
-  tsibble::as_tsibble(index = refdate, key = cur_days) %>% class()
+maturidades = c(30, 60, 90, 180, 270, 360, 720, 1080, 1800, 2520, 3600)
+maturidades_adjacentes = sort(c(maturidades, maturidades + 1, maturidades + 2, maturidades + 3))
 
+y = df[, -c(3,4,6)] %>%
+  filter(cur_days %in% maturidades_adjacentes) %>% 
+  complete(refdate, cur_days) %>%
+  fill(r_252, .direction = "updown") %>%
+  filter(cur_days %in% maturidades_adjacentes) %>% 
+  mutate(date     = refdate,
+         maturity = cur_days,
+         yield    = r_252*100,
+         .keep    = "unused")
 
-df %>%
+y %>%
   ggplot() +
-  aes(cur_days, r_252) +
+  aes(maturity, yield, color = date) +
   geom_line()
 
+# Inicializa a matriz com NA para evitar problemas de comprimento zero no subconjunto
+yc_matrix = matrix(NA, ncol = length(unique(y$maturity)), nrow = length(unique(y$date)), dimnames = list(as.Date(y$date %>% unique()),
+                                                                                                         y$maturity %>% unique()))
 
-SvenssonParameters <- Svensson(df$r_252, df$cur_days/30)
-Svensson.rate <- Srates(SvenssonParameters, df$cur_days/30, "Spot")
+
+# Preenche a matriz com as taxas de juros correspondentes
+for (i in 1:nrow(yc_matrix)) {
+  for (j in 1:ncol(yc_matrix)) {
+    yc_matrix[i, j] = y$yield[y$date == unique(y$date)[i] & y$maturity == unique(y$maturity)[j]]
+    print(paste("i = ",i))
+    print(paste("j = ",j))
+    yc_matrix
+  }
+}
+
+t = unique(y$maturity)
+
+SvenssonParameters <- Svensson(yc_matrix, unique(y$maturity)/30)
+Svensson.rate <- Srates(SvenssonParameters, unique(y$maturity)/30, "Spot")
 
 data(ECBYieldCurve)
 rate.ECB = first(ECBYieldCurve,'2 day')
