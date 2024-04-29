@@ -44,21 +44,32 @@ glimpse(df)
 # Tratamento de dados -----------------------------------------------------
 
 data <- df %>%
-  group_by(Ativo) %>%
   #fundos
-  mutate(var_36M = round(((Cota / lag(Cota,252*3)) - 1)*100,2)) %>%
-  mutate(var_ano = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-03-28")]) - 1)*100,2)) %>%
+  arrange(Ativo, Data) %>%
+  group_by(Ativo) %>% 
+  mutate(var = (Cota/lag(Cota, 1) - 1) * 100,
+         acumulado_36_meses = (zoo::rollapply(1 + var/100, width = 756, FUN = prod, align = 'right', fill = NA) - 1)*100) %>%
+  group_by(Ativo, year(Data), month(Data)) %>%
+  mutate(acumulado_mes = round((cumprod(1 + var/100) - 1) * 100, 2)) %>%
+  group_by(Ativo, year(Data)) %>%
+  mutate(acumulado_ano = round((cumprod(1 + var/100) - 1) * 100, 2)) %>% 
+  ungroup() %>% 
   #cdi
-  mutate(cdi_36M = round(((CDI / lag(CDI,252*3)) - 1)*100,2)) %>%
-  mutate(cdi_ano = round(((CDI / CDI[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-03-28")]) - 1)*100,2)) %>%
+  arrange(Ativo, Data) %>%
+  group_by(Ativo) %>% 
+  mutate(var_cdi = (CDI/lag(CDI, 1) - 1) * 100,
+         acumulado_36_meses_cdi = (zoo::rollapply(1 + var_cdi/100, width = 756, FUN = prod, align = 'right', fill = NA) - 1)*100) %>%
+  group_by(Ativo, year(Data), month(Data)) %>%
+  mutate(acumulado_mes_cdi = round((cumprod(1 + var_cdi/100) - 1) * 100, 2)) %>%
+  group_by(Ativo, year(Data)) %>%
+  mutate(acumulado_ano_cdi = round((cumprod(1 + var_cdi/100) - 1) * 100, 2)) %>%
+  ungroup() %>% 
   #excesso
-  mutate(excess_var_36M = ((1 + var_36M/100)/(1 + cdi_36M/100) - 1)*100) %>%
-  mutate(excess_var_ano = ((1 + var_ano/100)/(1 + cdi_ano/100) - 1)*100) %>%
-  mutate(excess_var_mes = ((1 + var_mes/100)/(1 + cdi_mes/100) - 1)*100)
+  mutate(excess_var_36M = ((1 + acumulado_36_meses/100)/(1 + acumulado_36_meses_cdi/100) - 1)*100) %>%
+  mutate(excess_var_ano = ((1 + acumulado_ano/100)/(1 + acumulado_ano_cdi/100) - 1)*100) %>%
+  mutate(excess_var_mes = ((1 + acumulado_mes/100)/(1 + acumulado_mes_cdi/100) - 1)*100)
 
-tbl <- data[,c(1,2,11,12,13)] %>%
+tbl <- data[,c(1:2,15:17)] %>%
   arrange(desc(Data)) %>%
   group_by(Ativo) %>%
   slice(1) %>%
@@ -105,19 +116,19 @@ data %>%
                                  "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" = paste0("Legacy: ", round(tbl$`% em 36 meses `[which(tbl$Ativo == "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO")],2), "%"),
                                  "VERDE AM X60 ADVISORY FIC MULTIMERCADO" = paste0("Verde: ", round(tbl$`% em 36 meses `[which(tbl$Ativo == "VERDE AM X60 ADVISORY FIC MULTIMERCADO")],2), "%"))) + 
   scale_linetype_manual(values = c("ABSOLUTE VERTEX FIC MULTIMERCADO" = "solid",
-                                 "IHFA" = "longdash",
-                                 "JGP STRATEGY FIC MULTIMERCADO" = "solid",
-                                 "KINEA ATLAS II FI MULTIMERCADO" = "solid",
-                                 "SPX NIMITZ FEEDER FIC MULTIMERCADO" = "solid",
-                                 "KAPITALO ZETA FIC MULTIMERCADO" = "solid",
-                                 "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" = "solid",
-                                 "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" = "solid",
-                                 "VERDE AM X60 ADVISORY FIC MULTIMERCADO" = "solid")) +
+                                   "IHFA" = "longdash",
+                                   "JGP STRATEGY FIC MULTIMERCADO" = "solid",
+                                   "KINEA ATLAS II FI MULTIMERCADO" = "solid",
+                                   "SPX NIMITZ FEEDER FIC MULTIMERCADO" = "solid",
+                                   "KAPITALO ZETA FIC MULTIMERCADO" = "solid",
+                                   "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" = "solid",
+                                   "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" = "solid",
+                                   "VERDE AM X60 ADVISORY FIC MULTIMERCADO" = "solid")) +
   guides(linetype = "none") +
   labs(title = NULL,
        subtitle = "Variação trianual do excesso de retorno", 
        caption = "Fonte: Capri com dados da Quantum Axis")
-  
+
 ggsave("variacao trianual.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
                                                                                                    "/Gráficos/Fundos",
                                                                                                    sep = ""))
