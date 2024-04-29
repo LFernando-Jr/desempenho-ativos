@@ -48,11 +48,11 @@ data <- df %>%
   #fundos
   mutate(var_36M = round(((Cota / lag(Cota,252*3)) - 1)*100,2)) %>%
   mutate(var_ano = round(((Cota / Cota[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-02-29")]) - 1)*100,2)) %>%
+  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-03-28")]) - 1)*100,2)) %>%
   #cdi
   mutate(cdi_36M = round(((CDI / lag(CDI,252*3)) - 1)*100,2)) %>%
   mutate(cdi_ano = round(((CDI / CDI[which(Data == "2024-01-02")]) - 1)*100,2)) %>%
-  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-02-29")]) - 1)*100,2)) %>%
+  mutate(cdi_mes = round(((CDI / CDI[which(Data == "2024-03-28")]) - 1)*100,2)) %>%
   #excesso
   mutate(excess_var_36M = ((1 + var_36M/100)/(1 + cdi_36M/100) - 1)*100) %>%
   mutate(excess_var_ano = ((1 + var_ano/100)/(1 + cdi_ano/100) - 1)*100) %>%
@@ -176,7 +176,7 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>% 
-  filter(Data >= "2024-03-01") %>%
+  filter(Data >= "2024-04-01") %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No mês `))$Ativo)) %>%
   ggplot() +
   aes(Data, excess_var_mes, colour = Ativo, linetype = Ativo) +
@@ -201,7 +201,7 @@ data %>%
                                  "JGP STRATEGY FIC MULTIMERCADO" = paste0("JGP: ", round(tbl$`% No mês `[which(tbl$Ativo == "JGP STRATEGY FIC MULTIMERCADO")],2), "%"),
                                  "KINEA ATLAS II FI MULTIMERCADO" = paste0("Kinea: ", round(tbl$`% No mês `[which(tbl$Ativo == "KINEA ATLAS II FI MULTIMERCADO")],2), "%"),
                                  "SPX NIMITZ FEEDER FIC MULTIMERCADO" = paste0("SPX: ", round(tbl$`% No mês `[which(tbl$Ativo == "SPX NIMITZ FEEDER FIC MULTIMERCADO")],2), "%"),
-                                 "KAPITALO ZETA FIC MULTIMERCADO" = paste0("Kapital: ", round(tbl$`% No mês `[which(tbl$Ativo == "KAPITALO ZETA FIC MULTIMERCADO")],2), "%"),
+                                 "KAPITALO ZETA FIC MULTIMERCADO" = paste0("Kapitalo: ", round(tbl$`% No mês `[which(tbl$Ativo == "KAPITALO ZETA FIC MULTIMERCADO")],2), "%"),
                                  "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" = paste0("Occam: ", round(tbl$`% No mês `[which(tbl$Ativo == "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO")],2), "%"),
                                  "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" = paste0("Legacy: ", round(tbl$`% No mês `[which(tbl$Ativo == "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO")],2), "%"),
                                  "VERDE AM X60 ADVISORY FIC MULTIMERCADO" = paste0("Verde: ", round(tbl$`% No mês `[which(tbl$Ativo == "VERDE AM X60 ADVISORY FIC MULTIMERCADO")],2), "%"))) + 
