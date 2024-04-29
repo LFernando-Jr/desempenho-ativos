@@ -58,21 +58,36 @@ glimpse(df)
 
 # Tratamento de dados -----------------------------------------------------
 
-data <- df %>%
-  group_by(Ativo) %>%
-  mutate(var_mes = round(((Cota / Cota[which(Data == "2024-01-31")]) - 1)*100, 2),
-         var_anualizado = ((1 + var_mes/100)^12 - 1) * 100)
+data = df %>% 
+  arrange(Ativo, Data) %>%
+  group_by(Ativo) %>% 
+  mutate(var = (Cota/lag(Cota, 1) - 1) * 100,
+         acumulado_12_meses = (zoo::rollapply(1 + var/100, width = 252, FUN = prod, align = 'right', fill = NA) - 1)*100) %>%
+  group_by(Ativo, year(Data), month(Data)) %>%
+  mutate(acumulado_mes  = round((cumprod(1 + var/100) - 1) * 100, 2),
+         var_anualizado = ((1 + acumulado_mes/100)^12 - 1) * 100) %>%
+  group_by(Ativo, year(Data)) %>%
+  mutate(acumulado_ano = round((cumprod(1 + var/100) - 1) * 100, 2)) %>% 
+  ungroup()
 
-tbl <- data %>%
+tbl = data %>%
   arrange(desc(Data)) %>%
   group_by(`Ativo`) %>%
   slice(1) %>%
   ungroup() %>%
-  select(-Data) %>%
-  arrange(desc(var_mes)) %>%
-  rename(`Var% no mes` = var_mes,
+  arrange(desc(acumulado_mes)) %>%
+  rename(`Var% no mes` = acumulado_mes,
          `Var% no mes anualizado` = var_anualizado,
-         `Numero Indice` = Cota)
+         `Var% no ano` = acumulado_ano,
+         `Var% em 12 meses` = acumulado_12_meses,
+         `Número índice` = Cota) %>% 
+  select(Data, 
+         Ativo, 
+         `Número índice`,
+         `Var% no mes`,
+         `Var% no mes anualizado`,
+         `Var% no ano`,
+         `Var% em 12 meses`)
 
 tbl
 

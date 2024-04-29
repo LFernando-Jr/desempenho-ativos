@@ -16,7 +16,6 @@ Quandl.api_key('on_Vk-ogkmufJBMudwhZ')
 
 # Coleta de dados ---------------------------------------------------------
 
-
 getSymbols(c("^SPX", "^DJI", "^RUT", "^IXIC", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
 getSymbols(c("BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
 
@@ -70,7 +69,6 @@ data <- df %>%
 tbl <- data[,-c(3,4,6,7)] %>%
   # filter(date <= "2024-02-29") %>% 
   arrange(desc(date)) %>%
-  arrange(desc(date)) %>%
   group_by(name) %>%
   slice(1) %>%
   ungroup() %>%
@@ -82,9 +80,9 @@ tbl <- data[,-c(3,4,6,7)] %>%
 
 tbl
 
-(df$DGS2[which(df$date == "2024-02-27")] - df$DGS2[which(df$date == "2024-01-31")]) * 100
-
-(df$DGS10[which(df$date == "2024-02-27")] - df$DGS10[which(df$date == "2024-01-31")]) * 100
+# (df$DGS2[which(df$date == "2024-02-27")] - df$DGS2[which(df$date == "2024-01-31")]) * 100
+# 
+# (df$DGS10[which(df$date == "2024-02-27")] - df$DGS10[which(df$date == "2024-01-31")]) * 100
 
 
 # Visualização de dados ---------------------------------------------------
