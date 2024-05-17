@@ -18,7 +18,7 @@ df <- rbind(
   # yc_get(refdate = "2024-01-02"),
   # yc_get(refdate = "2024-02-01"),
             # yc_get(refdate = Sys.Date() - 2),
-            yc_get(refdate = Sys.Date() - 1),
+            yc_get(refdate = Sys.Date() - 3),
             yc_get(refdate = Sys.Date() - 7))
 
 maturidades = c(30, 60, 90, 180, 270, 360, 720, 1080, 1800, 2520, 3600)
@@ -72,13 +72,6 @@ legend("topleft",legend=c("observed yield curve","fitted yield curve"),
        col=c(1,2),lty=1)
 grid()
 
-
-
-
-
-
-
-
 # Visualização de dados ---------------------------------------------------
 
 df %>%
@@ -123,24 +116,3 @@ lines(maturity.Fed,y, col=2)
 legend("topleft",legend=c("observed yield curve","fitted yield curve"),
        col=c(1,2),lty=1)
 grid()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

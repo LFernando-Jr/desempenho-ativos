@@ -59,6 +59,7 @@ glimpse(df)
 # Tratamento de dados -----------------------------------------------------
 
 data = df %>% 
+  # filter(Data < "2024-05-01") %>% 
   arrange(Ativo, Data) %>%
   group_by(Ativo) %>% 
   mutate(var = (Cota/lag(Cota, 1) - 1) * 100,

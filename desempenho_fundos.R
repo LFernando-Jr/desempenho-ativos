@@ -136,7 +136,8 @@ ggsave("variacao trianual.png", width = 4800, height = 2160, units = "px", dpi =
 ## Variação anual acumulada  -------------------------------------------------------
 
 data %>% 
-  filter(Data >= "2024-01-01") %>%
+  filter(Data >= floor_date(Sys.Date(), "year")) %>%
+  # filter(Data >= floor_date(Sys.Date(), "year") & Data < "2024-05-01") %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No ano `))$Ativo)) %>%
   ggplot() +
   aes(Data, excess_var_ano, colour = Ativo, linetype = Ativo) +
@@ -187,7 +188,8 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>% 
-  filter(Data >= "2024-04-01") %>%
+  filter(Data >= floor_date(Sys.Date(), "month")) %>%
+  # filter(Data >= as.Date("2024-04-01") & Data < floor_date(Sys.Date(), "month")) %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No mês `))$Ativo)) %>%
   ggplot() +
   aes(Data, excess_var_mes, colour = Ativo, linetype = Ativo) +
