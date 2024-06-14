@@ -43,13 +43,12 @@ y %>%
 yc_matrix = matrix(NA, ncol = length(unique(y$maturity)), nrow = length(unique(y$date)), dimnames = list(as.Date(y$date %>% unique()),
                                                                                                          y$maturity %>% unique()))
 
-
 # Preenche a matriz com as taxas de juros correspondentes
 for (i in 1:nrow(yc_matrix)) {
   for (j in 1:ncol(yc_matrix)) {
     yc_matrix[i, j] = y$yield[y$date == unique(y$date)[i] & y$maturity == unique(y$maturity)[j]]
-    print(paste("i = ",i))
-    print(paste("j = ",j))
+    print(paste("i = ", i))
+    print(paste("j = ", j))
     yc_matrix
   }
 }
