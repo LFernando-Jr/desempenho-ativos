@@ -74,11 +74,11 @@ tbl <- data[,c(1:2,15:17)] %>%
   group_by(Ativo) %>%
   slice(1) %>%
   ungroup() %>%
-  select(-Data) %>%
+  # select(-Data) %>%
   arrange(desc(excess_var_ano)) %>%
   rename(`% No mês ` = excess_var_mes,
          `% No ano ` = excess_var_ano,
-         `% em 36 meses ` = excess_var_36M )
+         `% em 36 meses ` = excess_var_36M)
 
 # Visualização de dados ---------------------------------------------------
 
@@ -189,7 +189,7 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 
 data %>% 
   filter(Data >= floor_date(Sys.Date(), "month")) %>%
-  # filter(Data >= as.Date("2024-04-01") & Data < floor_date(Sys.Date(), "month")) %>%
+  # filter(Data >= as.Date("2024-05-01") & Data < floor_date(Sys.Date(), "month")) %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No mês `))$Ativo)) %>%
   ggplot() +
   aes(Data, excess_var_mes, colour = Ativo, linetype = Ativo) +
