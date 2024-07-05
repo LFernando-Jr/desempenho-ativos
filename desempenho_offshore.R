@@ -180,8 +180,8 @@ ggsave("retorno anual acumulado.png", width = 4800, height = 2160, units = "px",
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>%
-  filter(date >= floor_date(Sys.Date(), "month")) %>%
-  # filter(date >= as.Date("2024-04-01") & date < floor_date(Sys.Date(), "month")) %>%
+  # filter(date >= floor_date(Sys.Date(), "month")) %>%
+  filter(date >= as.Date("2024-06-01") & date < floor_date(Sys.Date(), "month")) %>%
   mutate(name = factor(name, levels = arrange(tbl, desc(`Retorno acumulado no mês`))$name)) %>%
   ggplot() +
   aes(date, acumulado_mes, colour = name) +
