@@ -188,8 +188,8 @@ ggsave("variacao anual acumulada.png", width = 4800, height = 2160, units = "px"
 ## Variação mensal acumulada  -------------------------------------------------------
 
 data %>% 
-  # filter(Data >= floor_date(Sys.Date(), "month")) %>%
-  filter(Data >= as.Date("2024-06-01") & Data < floor_date(Sys.Date(), "month")) %>%
+  filter(Data >= floor_date(Sys.Date(), "month")) %>%
+  # filter(Data >= as.Date("2024-06-01") & Data < floor_date(Sys.Date(), "month")) %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`% No mês `))$Ativo)) %>%
   ggplot() +
   aes(Data, excess_var_mes, colour = Ativo, linetype = Ativo) +
@@ -235,3 +235,4 @@ data %>%
 ggsave("variacao mensal acumulada.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
                                                                                                            "/Gráficos/Fundos",
                                                                                                            sep = ""))
+
