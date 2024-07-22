@@ -19,12 +19,23 @@ df <- rbind(
   # yc_get(refdate = "2024-02-01"),
             # yc_get(refdate = Sys.Date() - 2),
      
-  yc_get(refdate = as.Date("2024-06-19")),
-  yc_get(refdate = as.Date("2024-06-24")),
+  yc_get(refdate = as.Date("2024-06-03")),
   yc_get(refdate = as.Date("2024-06-28")))
 # yc_get(refdate = Sys.Date() - 1))
 
+df = yc_mget(first_date = as.Date("2024-06-03"),
+             last_date = as.Date("2024-06-28"))
+
+
 # Visualização de dados ---------------------------------------------------
+
+df[,c(1,2,5)] %>% 
+  pivot_wider(id_cols = cur_days,
+              names_from = refdate,
+              values_from = r_252) %>% 
+  view()
+  
+  
 
 df %>%
   filter(cur_days <= 2646) %>% 
