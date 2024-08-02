@@ -276,7 +276,7 @@ ggsave("retorno anual acumulado.png",
 
 data %>%
   filter(date >= floor_date(Sys.Date(), "month")) %>%
-  # filter(date >= as.Date("2024-06-01") & date < floor_date(Sys.Date(), 
+  # filter(date >= as.Date("2024-07-01") & date < floor_date(Sys.Date(),
   # "month")) %>%
   mutate(name = factor(name, 
                        levels = arrange(
