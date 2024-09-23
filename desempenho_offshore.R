@@ -38,6 +38,7 @@ getSymbols(c(
   "^DJI",
   "^RUT", 
   "^IXIC",
+  "^SPXEW",
   "AGG",
   "STIP",
   "TIP",
@@ -59,20 +60,21 @@ getSymbols(c(
 df_list = list(
   ACWI  = `ACWI`,
   AGG   = `AGG`,
-  HG    = BAMLCC0A0CMTRIV,
-  HY    = BAMLHYH0A0HYM2TRIV,
-  CBU7  = CBU7.L,
+  HG    =  BAMLCC0A0CMTRIV,
+  HY    =  BAMLHYH0A0HYM2TRIV,
+  CBU7  =  CBU7.L,
   DJI   = `DJI`,
   DXY   = `DX-Y.NYB`,
   IXIC  = `IXIC`,
   RUT   = `RUT`,
   SGOV  = `SGOV`,
   SPX   = `SPX`,
+  SPXEW = `SPXEW`,
   STIP  = `STIP`,
   TIP   = `TIP`
   )
 
-col_indices = c(6, 6, 1, 1, 6, 6, 6, 6, 6, 6, 6, 6, 6)
+col_indices = c(6, 6, 1, 1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6)
 
 df = simplify_dfs(df_list, col_indices) %>% 
   janitor::clean_names()
@@ -99,7 +101,7 @@ data = df %>%
   ungroup()
 
 tbl <- data[,-c(3,4,6,7)] %>%
-  # filter(date < "2024-05-01") %>%
+  # filter(date < "2024-09-01") %>%
   arrange(desc(date)) %>%
   group_by(name) %>%
   slice(1) %>%
@@ -118,6 +120,11 @@ tbl
 
 data %>% 
   filter(date >= last(data$date) - 360) %>% 
+   mutate(name = factor(name, 
+                       levels = arrange(
+                         tbl, 
+                         desc(`Retorno acumulado em 12 meses`)
+                         )$name)) %>%
   ggplot() +
   aes(date, acumulado_12_meses, colour = name) +
   geom_line(linewidth = .75) +
@@ -127,35 +134,96 @@ data %>%
                      axis.title = element_blank(), 
                      strip.background = element_blank()) + 
   scale_x_date(expand = c(0,0), date_labels = "%b-%y", breaks = "1 months") +
-  scale_colour_manual(values = c("spx" = "#2F47AD",
-                                 "ixic" = "black",
-                                 "rut" = "#8C977D",
-                                 "dji" = "#31AFE0",
-                                 "acwi" = "#F4A261",
-                                 "cbu7" = "#7F5A58",
-                                 "agg" = "#E47632",
-                                 "hg" = "#AD4728",
-                                 "hy" = "#3BA58B",
-                                 "sgov" = "#D4A83F",
-                                 "tip" = "#8057A5",
-                                 "stip" = "#FF6F61",
-                                 "dxy" = "#00796B"),
-                      labels = c("spx" = "S&P",
-                                 "ixic" = "Nasdaq",
-                                 "rut" = "Russell",
-                                 "dji" = "Dow Jones",
-                                 "agg" = "AGG",
-                                 "hg" = "HG",
-                                 "hy" = "HY",
-                                 "acwi" = "MSCI ACWI",
-                                 "cbu7" = "CBU7",
-                                 "sgov" = "SGOV",
-                                 "tip" = "TIP",
-                                 "stip" = "STIP",
-                                 "dxy" = "DXY")) +
-  labs(title = "Índices", 
+  scale_colour_manual(
+    values = c(
+      "spx"   = "#2F47AD",
+      "spxew" = "#1F99FF",
+      "ixic"  = "black",
+      "rut"   = "#8C977D",
+      "dji"   = "#31AFE0",
+      "acwi"  = "#F4A261",
+      "cbu7"  = "#7F5A58",
+      "agg"   = "#E47632",
+      "hg"    = "#AD4728",
+      "hy"    = "#3BA58B",
+      "sgov"  = "#D4A83F",
+      "tip"   = "#8057A5",
+      "stip"  = "#FF6F61",
+      "dxy"   = "#00796B"),
+    labels = c(
+      "spx" = paste0(
+        "S&P: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "spx")],2), 
+        "%"
+      ),
+      "spxew" = paste0(
+        "S&P EW: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "spxew")],2),
+        "%"
+      ),
+      "acwi" = paste0(
+        "MSCI ACWI: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "acwi")],2),
+        "%"
+      ),
+      "cbu7" = paste0(
+        "CBU7: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "cbu7")],2), 
+        "%"
+      ),
+      "ixic" = paste0(
+        "Nasdaq: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "ixic")],2),
+        "%"
+      ),
+      "rut" = paste0(
+        "Russell: ",
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "rut")],2), 
+        "%"
+      ),
+      "dji" = paste0(
+        "Dow Jones: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "dji")],2),
+        "%"
+      ),
+      "agg" = paste0(
+        "AGG: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "agg")],2),
+        "%"
+      ),
+      "hg" = paste0(
+        "HG: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "hg")],2),
+        "%"
+      ),
+      "hy" = paste0(
+        "HY: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "hy")],2),
+        "%"
+      ),
+      "sgov" = paste0(
+        "SGOV: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "sgov")],2),
+        "%"
+      ),
+      "tip" = paste0(
+        "TIP: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "tip")],2),
+        "%"
+      ),
+      "stip" = paste0(
+        "STIP: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "stip")],2),
+        "%"
+      ),
+      "dxy" = paste0(
+        "DXY: ", 
+        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "dxy")],2), 
+        "%"
+      ))) +
+  labs(title    = "Índices", 
        subtitle = "Retorno acumulado em 12 meses",
-       caption = "Fonte: Capri com dados da Quandl")
+       caption  = "Fonte: Capri com dados da Quandl")
 
 ggsave("acumulado em 12 meses.png", 
        width = 4800, 
@@ -168,12 +236,11 @@ ggsave("acumulado em 12 meses.png",
        # dpi = 800,
        path = paste0(getwd(), "/Gráficos/Offshore"))
 
-
 ## Variação anual acumulada -----------------------------------------------
 
 data %>%
   filter(date >= floor_date(Sys.Date(), "year")) %>%
-  # filter(date >= floor_date(Sys.Date(), "year") & date < "2024-05-01") %>%
+  # filter(date >= floor_date(Sys.Date(), "year") & date < "2024-09-01") %>%
   mutate(name = factor(name, 
                        levels = arrange(
                          tbl, 
@@ -190,24 +257,29 @@ data %>%
   scale_x_date(expand = c(0,0), date_labels = "%b", breaks = "1 months") +
   scale_colour_manual(
     values = c(
-      "spx" = "#2F47AD",
+      "spx"  = "#2F47AD",
+      "spxew" = "#1F99FF",
       "ixic" = "black",
-      "rut" = "#8C977D",
-      "dji" = "#31AFE0",
+      "rut"  = "#8C977D",
+      "dji"  = "#31AFE0",
       "acwi" = "#F4A261",
       "cbu7" = "#7F5A58",
-      "agg" = "#E47632",
-      "hg" = "#AD4728",
-      "hy" = "#3BA58B",
+      "agg"  = "#E47632",
+      "hg"   = "#AD4728",
+      "hy"   = "#3BA58B",
       "sgov" = "#D4A83F",
-      "tip" = "#8057A5",
+      "tip"  = "#8057A5",
       "stip" = "#FF6F61",
-      "dxy" = "#00796B"),
+      "dxy"  = "#00796B"),
     labels = c(
       "spx" = paste0(
         "S&P: ", 
         tbl$`Retorno acumulado no ano`[which(tbl$name == "spx")], "%"
         ),
+      "spxew" = paste0(
+        "S&P EW: ", 
+        tbl$`Retorno acumulado no ano`[which(tbl$name == "spxew")], "%"
+      ),
       "acwi" = paste0(
         "MSCI ACWI: ", 
         tbl$`Retorno acumulado no ano`[which(tbl$name == "acwi")], "%"
@@ -276,7 +348,7 @@ ggsave("retorno anual acumulado.png",
 
 data %>%
   filter(date >= floor_date(Sys.Date(), "month")) %>%
-  # filter(date >= as.Date("2024-07-01") & date < floor_date(Sys.Date(),
+  # filter(date >= as.Date("2024-08-01") & date < floor_date(Sys.Date(),
   # "month")) %>%
   mutate(name = factor(name, 
                        levels = arrange(
@@ -295,6 +367,7 @@ data %>%
   scale_colour_manual(
     values = c(
       "spx" = "#2F47AD",
+      "spxew" = "#1F99FF",
       "ixic" = "black",
       "rut" = "#8C977D",
       "dji" = "#31AFE0",
@@ -312,6 +385,10 @@ data %>%
         "S&P: ", 
         tbl$`Retorno acumulado no mês`[which(tbl$name == "spx")], "%"
         ),
+      "spxew" = paste0(
+        "S&P EW: ", 
+        tbl$`Retorno acumulado no mês`[which(tbl$name == "spxew")], "%"
+      ),
       "acwi" = paste0(
         "MSCI ACWI: ", 
         tbl$`Retorno acumulado no mês`[which(tbl$name == "acwi")], "%"
