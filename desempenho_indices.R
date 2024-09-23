@@ -39,7 +39,7 @@ data = df %>%
   ungroup()
 
 tbl = data[,-c(3,4,6,7)] %>%
-  # filter(Data < "2024-05-01") %>%
+  # filter(Data < "2024-09-01") %>%
   arrange(desc(Data)) %>%
   group_by(`Ativo`) %>%
   slice(1) %>%
@@ -104,7 +104,7 @@ ggsave("acumulado em 12 mesess.png",
 
 data %>% 
   filter(Data >= floor_date(Sys.Date(), "year")) %>%
-  # filter(Data >= floor_date(Sys.Date(), "year") & Data < "2024-05-01") %>%
+  # filter(Data >= floor_date(Sys.Date(), "year") & Data < "2024-09-01") %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`Retorno acumulado no ano`))$Ativo)) %>%
   ggplot() +
   aes(Data, acumulado_ano, colour = Ativo, linetype = Ativo) +
@@ -168,7 +168,7 @@ ggsave("retorno anual acumulado.png",
 
 data %>%
   filter(Data >= floor_date(Sys.Date(), "month")) %>%
-  # filter(Data >= as.Date("2024-07-01") & Data < floor_date(Sys.Date(), "month")) %>%
+  # filter(Data >= as.Date("2024-08-01") & Data < floor_date(Sys.Date(), "month")) %>%
   mutate(Ativo = factor(Ativo, levels = arrange(tbl, desc(`Retorno acumulado no mês`))$Ativo)) %>%
   ggplot() +
   aes(Data, acumulado_mes, colour = Ativo, linetype = Ativo) +

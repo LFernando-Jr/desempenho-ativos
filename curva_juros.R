@@ -19,8 +19,8 @@ df <- rbind(
   # yc_get(refdate = "2024-02-01"),
             # yc_get(refdate = Sys.Date() - 2),
      
-  yc_get(refdate = as.Date("2024-06-03")),
-  yc_get(refdate = as.Date("2024-06-28")))
+  yc_get(refdate = as.Date("2024-08-19")),
+  yc_get(refdate = as.Date("2024-08-30")))
 # yc_get(refdate = Sys.Date() - 1))
 
 df = yc_mget(first_date = as.Date("2024-06-03"),
@@ -52,7 +52,7 @@ df %>%
   # scale_colour_manual(values = c("#2F47AD",
   #                                "#AD4728")) +
   labs(title = "Curva de juros",
-       caption = "Fonte: Capri FO com dados da B3",
+       caption = "Elaboração do autor com dados da B3",
        x = NULL, y = "Taxa de juros")
 
 ggsave("ETTJ.png", width = 4800, height = 2160, units = "px", dpi = 576, path = paste(getwd(),
