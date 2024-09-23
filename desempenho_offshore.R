@@ -4,7 +4,7 @@
 library(tidyverse)
 library(magrittr)
 library(quantmod)
-library(Quandl)
+# library(Quandl)
 
 # Setup -------------------------------------------------------------------
 
@@ -13,7 +13,7 @@ rm(list = ls())
 Sys.setenv("LANGUAGE" = "Pt")
 Sys.setlocale("LC_ALL", "Portuguese")
 
-Quandl.api_key('on_Vk-ogkmufJBMudwhZ')
+# Quandl.api_key('on_Vk-ogkmufJBMudwhZ')
 
 simplify_dfs = function(df_list, col_indices) {
   simplified_dfs = lapply(seq_along(df_list), function(i) {
@@ -43,9 +43,9 @@ getSymbols(c(
   "STIP",
   "TIP",
   "SGOV",
-  "DX-Y.NYB",
-  "CBU7.L",
-  "ACWI"
+  "DX-Y.NYB"
+  # "CBU7.L",
+  # "ACWI"
   ), 
   src = 'yahoo', 
   return.class = "data.frame")
@@ -57,12 +57,12 @@ getSymbols(c(
   src = 'FRED',
   return.class = "data.frame")
 
-df_list = list(
-  ACWI  = `ACWI`,
+data_list = list(
+  # ACWI  = `ACWI`,
   AGG   = `AGG`,
   HG    =  BAMLCC0A0CMTRIV,
   HY    =  BAMLHYH0A0HYM2TRIV,
-  CBU7  =  CBU7.L,
+  # CBU7  =  CBU7.L,
   DJI   = `DJI`,
   DXY   = `DX-Y.NYB`,
   IXIC  = `IXIC`,
@@ -72,23 +72,54 @@ df_list = list(
   SPXEW = `SPXEW`,
   STIP  = `STIP`,
   TIP   = `TIP`
-  )
+)
 
-col_indices = c(6, 6, 1, 1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6)
+col_indices = c(
+  # 6, 
+  6,
+  1, 
+  1,
+  # 6,
+  6,
+  6,
+  6, 
+  6, 
+  6, 
+  6, 
+  6, 
+  6, 
+  6)
 
-df = simplify_dfs(df_list, col_indices) %>% 
+data_df = simplify_dfs(data_list, col_indices) %>% 
   janitor::clean_names()
 
+rm(
+  # `ACWI`,
+  `AGG`,
+  BAMLCC0A0CMTRIV,
+  BAMLHYH0A0HYM2TRIV,
+  # CBU7.L,
+  `DJI`,
+  `DX-Y.NYB`,
+  `IXIC`,
+  `RUT`,
+  `SGOV`,
+  `SPX`,
+  `SPXEW`,
+  `STIP`,
+  `TIP`
+)
+
 # Estrutura
-glimpse(df)
+glimpse(data_df)
 
 # Tratamento de dados -----------------------------------------------------
 
-data = df %>%
+data = data_df %>%
   pivot_longer(cols = -1, values_drop_na = TRUE) %>% 
   arrange(name, date) %>%
   mutate(var = (value/lag(value, 1) - 1) * 100,
-         acumulado_12_meses = (zoo::rollapply(1 + var/100, 
+         acumulado_12_meses= (zoo::rollapply(1 + var/100, 
                                               width = 252, 
                                               FUN = prod, 
                                               align = 'right', 
@@ -100,7 +131,7 @@ data = df %>%
   mutate(acumulado_ano = round((cumprod(1 + var/100) - 1) * 100, 2)) %>% 
   ungroup()
 
-tbl <- data[,-c(3,4,6,7)] %>%
+tbl = data[,-c(3,4,6,7)] %>%
   # filter(date < "2024-09-01") %>%
   arrange(desc(date)) %>%
   group_by(name) %>%
@@ -108,23 +139,83 @@ tbl <- data[,-c(3,4,6,7)] %>%
   ungroup() %>%
   select(-date) %>%
   arrange(desc(acumulado_mes)) %>%
-  rename(`Retorno acumulado no mês` = acumulado_mes,
-         `Retorno acumulado no ano` = acumulado_ano,
-         `Retorno acumulado em 12 meses` = acumulado_12_meses)
+  pivot_longer(cols = -1,
+               names_to = "retorno")
 
 tbl
 
 # Visualização de dados ---------------------------------------------------
 
+## Visualização em barras -------------------------------------------------
+
+tbl %>%
+  filter(retorno == "acumulado_12_meses") %>% 
+  ggplot() +
+  aes(x = reorder(name, value), 
+      y = value, fill = value > 0) +
+  geom_bar(stat = "identity") +
+  coord_flip(
+    ylim = c(min(tbl$value[which(tbl$retorno == "acumulado_12_meses")] - 5),
+             max(tbl$value[which(tbl$retorno == "acumulado_12_meses")] + 5))
+  ) +
+  geom_text(
+    aes(label = paste0(round(value, 2), "%")), 
+    hjust = ifelse(tbl$value[which(tbl$retorno == "acumulado_12_meses")] > 0, 
+                   -0.1, 1.1)) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "red")) +
+  scale_x_discrete(label = c("spx"   = "S&P",
+                             "spxew" = "S&P EW",
+                             "ixic"  = "NASDAQ",
+                             "rut"   = "Russell",
+                             "dji"   = "Dow Jones",
+                             # "acwi"  = "MSCI ACWI",
+                             # "cbu7"  = "CBUL.7",
+                             "agg"   = "AGG",
+                             "hg"    = "High Grade",
+                             "hy"    = "High Yield",
+                             "sgov"  = "Juros de Curto Prazo",
+                             "tip"   = "Inflação Longa",
+                             "stip"  = "Inflação Curta",
+                             "dxy"   = "Índice do Dólar")) +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.border = element_blank(),
+        axis.line.x.bottom = element_line(color = "black"),
+        axis.line.y.left =  element_line(color = "black")) +
+  labs(title = "Retorno em 12 meses",
+       x = NULL, 
+       y = "Retorno (%)",
+       caption = "Capri FO com dados da Quandl")
+
+ggsave("acumulado em 12 meses_barras.png", 
+       width = 4800, 
+       # width = 15,
+       height = 2160, 
+       # height = 8.661,
+       units = "px",
+       # units = "in",
+       dpi = 576, 
+       # dpi = 800,
+       path = paste0(getwd(), "/gráficos/offshore"))
+
 ## Variação anual -------------------------------------------------------
 
+
+### Renda Variável ------------------------------------------------------
+
 data %>% 
-  filter(date >= last(data$date) - 360) %>% 
-   mutate(name = factor(name, 
-                       levels = arrange(
-                         tbl, 
-                         desc(`Retorno acumulado em 12 meses`)
-                         )$name)) %>%
+  filter(date >= last(data$date) - 360,
+         name %in% c("dji",
+                     "ixic",
+                     "rut",
+                     "spx",
+                     "spxew",
+                     "sgov",
+                     "dxy")) %>% 
+  # mutate(name = factor(name, 
+  #                      levels = arrange(tbl, 
+  #                                       desc(`acumulado_12_meses`)
+  #                                       )$name)) %>%
   ggplot() +
   aes(date, acumulado_12_meses, colour = name) +
   geom_line(linewidth = .75) +
@@ -151,77 +242,20 @@ data %>%
       "stip"  = "#FF6F61",
       "dxy"   = "#00796B"),
     labels = c(
-      "spx" = paste0(
-        "S&P: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "spx")],2), 
-        "%"
-      ),
-      "spxew" = paste0(
-        "S&P EW: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "spxew")],2),
-        "%"
-      ),
-      "acwi" = paste0(
-        "MSCI ACWI: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "acwi")],2),
-        "%"
-      ),
-      "cbu7" = paste0(
-        "CBU7: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "cbu7")],2), 
-        "%"
-      ),
-      "ixic" = paste0(
-        "Nasdaq: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "ixic")],2),
-        "%"
-      ),
-      "rut" = paste0(
-        "Russell: ",
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "rut")],2), 
-        "%"
-      ),
-      "dji" = paste0(
-        "Dow Jones: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "dji")],2),
-        "%"
-      ),
-      "agg" = paste0(
-        "AGG: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "agg")],2),
-        "%"
-      ),
-      "hg" = paste0(
-        "HG: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "hg")],2),
-        "%"
-      ),
-      "hy" = paste0(
-        "HY: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "hy")],2),
-        "%"
-      ),
-      "sgov" = paste0(
-        "SGOV: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "sgov")],2),
-        "%"
-      ),
-      "tip" = paste0(
-        "TIP: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "tip")],2),
-        "%"
-      ),
-      "stip" = paste0(
-        "STIP: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "stip")],2),
-        "%"
-      ),
-      "dxy" = paste0(
-        "DXY: ", 
-        round(tbl$`Retorno acumulado em 12 meses`[which(tbl$name == "dxy")],2), 
-        "%"
-      ))) +
-  labs(title    = "Índices", 
+      "spx" = "S&P",
+      "spxew" = "S&P EW",
+      "acwi" = "MSCI ACWI",
+      "ixic" = "Nasdaq",
+      "rut" = "Russell",
+      "dji" = "Dow Jones",
+      "agg" = "AGG",
+      "hg" = "HG", 
+      "hy" = "HY",
+      "sgov" = "SGOV",
+      "tip" = "TIP",
+      "stip" = "STIP",
+      "dxy" = "DXY")) +
+  labs(title    = "Renda Variável", 
        subtitle = "Retorno acumulado em 12 meses",
        caption  = "Fonte: Capri com dados da Quandl")
 
