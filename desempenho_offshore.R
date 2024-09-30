@@ -200,7 +200,6 @@ ggsave("acumulado em 12 meses_barras.png",
 
 ## Variação anual -------------------------------------------------------
 
-
 ### Renda Variável ------------------------------------------------------
 
 data %>% 
@@ -211,11 +210,7 @@ data %>%
                      "spx",
                      "spxew",
                      "sgov",
-                     "dxy")) %>% 
-  # mutate(name = factor(name, 
-  #                      levels = arrange(tbl, 
-  #                                       desc(`acumulado_12_meses`)
-  #                                       )$name)) %>%
+                     "dxy")) %>%
   ggplot() +
   aes(date, acumulado_12_meses, colour = name) +
   geom_line(linewidth = .75) +
@@ -271,6 +266,58 @@ ggsave("acumulado em 12 meses.png",
        path = paste0(getwd(), "/Gráficos/Offshore"))
 
 ## Variação anual acumulada -----------------------------------------------
+
+## Visualização em barras -------------------------------------------------
+
+tbl %>%
+  filter(retorno == "acumulado_ano") %>% 
+  ggplot() +
+  aes(x = reorder(name, value), 
+      y = value, fill = value > 0) +
+  geom_bar(stat = "identity") +
+  coord_flip(
+    ylim = c(min(tbl$value[which(tbl$retorno == "acumulado_ano")] - 5),
+             max(tbl$value[which(tbl$retorno == "acumulado_ano")] + 5))
+  ) +
+  geom_text(
+    aes(label = paste0(round(value, 2), "%")), 
+    hjust = ifelse(tbl$value[which(tbl$retorno == "acumulado_ano")] > 0, 
+                   -0.1, 1.1)) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "red")) +
+  scale_x_discrete(label = c("spx"   = "S&P",
+                             "spxew" = "S&P EW",
+                             "ixic"  = "NASDAQ",
+                             "rut"   = "Russell",
+                             "dji"   = "Dow Jones",
+                             # "acwi"  = "MSCI ACWI",
+                             # "cbu7"  = "CBUL.7",
+                             "agg"   = "AGG",
+                             "hg"    = "High Grade",
+                             "hy"    = "High Yield",
+                             "sgov"  = "Juros de Curto Prazo",
+                             "tip"   = "Inflação Longa",
+                             "stip"  = "Inflação Curta",
+                             "dxy"   = "Índice do Dólar")) +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.border = element_blank(),
+        axis.line.x.bottom = element_line(color = "black"),
+        axis.line.y.left =  element_line(color = "black")) +
+  labs(title = "Retorno no ano",
+       x = NULL, 
+       y = "Retorno (%)",
+       caption = "Capri FO com dados da Quandl")
+
+ggsave("acumulado no ano_barras.png", 
+       width = 4800, 
+       # width = 15,
+       height = 2160, 
+       # height = 8.661,
+       units = "px",
+       # units = "in",
+       dpi = 576, 
+       # dpi = 800,
+       path = paste0(getwd(), "/gráficos/offshore"))
 
 data %>%
   filter(date >= floor_date(Sys.Date(), "year")) %>%
@@ -379,6 +426,58 @@ ggsave("retorno anual acumulado.png",
 
 
 ## Variação mensal acumulada ----------------------------------------------
+
+## Visualização em barras -------------------------------------------------
+
+tbl %>%
+  filter(retorno == "acumulado_mes") %>% 
+  ggplot() +
+  aes(x = reorder(name, value), 
+      y = value, fill = value > 0) +
+  geom_bar(stat = "identity") +
+  coord_flip(
+    ylim = c(min(tbl$value[which(tbl$retorno == "acumulado_mes")] - 2),
+             max(tbl$value[which(tbl$retorno == "acumulado_mes")] + 2))
+  ) +
+  geom_text(
+    aes(label = paste0(round(value, 2), "%")), 
+    hjust = ifelse(tbl$value[which(tbl$retorno == "acumulado_mes")] > 0, 
+                   -0.1, 1.1)) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "red")) +
+  scale_x_discrete(label = c("spx"   = "S&P",
+                             "spxew" = "S&P EW",
+                             "ixic"  = "NASDAQ",
+                             "rut"   = "Russell",
+                             "dji"   = "Dow Jones",
+                             # "acwi"  = "MSCI ACWI",
+                             # "cbu7"  = "CBUL.7",
+                             "agg"   = "AGG",
+                             "hg"    = "High Grade",
+                             "hy"    = "High Yield",
+                             "sgov"  = "Juros de Curto Prazo",
+                             "tip"   = "Inflação Longa",
+                             "stip"  = "Inflação Curta",
+                             "dxy"   = "Índice do Dólar")) +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.border = element_blank(),
+        axis.line.x.bottom = element_line(color = "black"),
+        axis.line.y.left =  element_line(color = "black")) +
+  labs(title = "Retorno no mês",
+       x = NULL, 
+       y = "Retorno (%)",
+       caption = "Capri FO com dados da Quandl")
+
+ggsave("acumulado em 12 meses_barras.png", 
+       width = 4800, 
+       # width = 15,
+       height = 2160, 
+       # height = 8.661,
+       units = "px",
+       # units = "in",
+       dpi = 576, 
+       # dpi = 800,
+       path = paste0(getwd(), "/gráficos/offshore"))
 
 data %>%
   filter(date >= floor_date(Sys.Date(), "month")) %>%

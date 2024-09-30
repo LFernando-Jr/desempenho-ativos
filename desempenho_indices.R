@@ -12,49 +12,99 @@ Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
 
-df = readxl::read_excel(paste0(getwd(), "/Dados/index.xlsx"), sheet = 1) %>%
-  `colnames<-`(c("Ativo",
-                 "Data",
-                 "Cota")) %>%
-  mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
+data = readxl::read_excel(paste0(getwd(), "/Dados/index.xlsx"), sheet = 1) %>%
+  mutate(date  = as.Date(Data, format = "%d/%m/%Y"),
+         name  = `Nome do Ativo`,
+         value = `Número Índice`,
+        .keep  = "none")
 
 # Estrutura
-glimpse(df)
+glimpse(data)
 
 # Tratamento de dados -----------------------------------------------------
 
-data = df %>% 
-  arrange(Ativo, Data) %>%
-  group_by(Ativo) %>% 
-  mutate(var = (Cota/lag(Cota, 1) - 1) * 100,
+data %<>% 
+  group_by(name) %>% 
+  mutate(var = (value/lag(value, 1) - 1) * 100,
          acumulado_12_meses = (zoo::rollapply(1 + var/100, 
                                               width = 252, 
                                               FUN = prod, 
                                               align = 'right', 
                                               fill = NA) - 1)*100) %>%
-  group_by(Ativo, year(Data), month(Data)) %>%
+  group_by(name, year(date), month(date)) %>%
   mutate(acumulado_mes = round((cumprod(1 + var/100) - 1) * 100, 2)) %>%
-  group_by(Ativo, year(Data)) %>%
+  group_by(name, year(date)) %>%
   mutate(acumulado_ano = round((cumprod(1 + var/100) - 1) * 100, 2)) %>% 
   ungroup()
 
 tbl = data[,-c(3,4,6,7)] %>%
   # filter(Data < "2024-09-01") %>%
-  arrange(desc(Data)) %>%
-  group_by(`Ativo`) %>%
+  arrange(desc(date)) %>%
+  group_by(name) %>%
   slice(1) %>%
   ungroup() %>%
-  select(-Data) %>%
-  arrange(desc(acumulado_mes)) %>%
-  rename(`Retorno acumulado no mês` = acumulado_mes,
-         `Retorno acumulado no ano` = acumulado_ano,
-         `Retorno acumulado em 12 meses` = acumulado_12_meses)
+  pivot_longer(cols = -c(1:2),
+               names_to = "retorno")
 
 tbl
 
 # Visualização de dados ---------------------------------------------------
 
-## Variação anual -------------------------------------------------------
+## Variação anual ---------------------------------------------------------
+
+## Visualização em barras -------------------------------------------------
+
+tbl %>%
+  filter(retorno == "acumulado_mes",
+         !name %in% c("Idex-CDI Geral JGP",
+                      "Idex-Infra Geral JGP")) %>% 
+  ggplot() +
+  aes(x = reorder(name, value), 
+      y = value, fill = value > 0) +
+  geom_bar(stat = "identity") +
+  coord_flip(
+    ylim = c(min(tbl$value[which(tbl$retorno == "acumulado_mes" & !tbl$name %in% c("Idex-CDI Geral JGP", "Idex-Infra Geral JGP"))]) - 5,
+             max(tbl$value[which(tbl$retorno == "acumulado_mes" & !tbl$name %in% c("Idex-CDI Geral JGP", "Idex-Infra Geral JGP"))]) + 5)
+  ) +
+  geom_text(
+    aes(label = paste0(round(value, 2), "%")), 
+    hjust = ifelse(tbl$value[which(tbl$retorno == "acumulado_mes" & !tbl$name %in% c("Idex-CDI Geral JGP", "Idex-Infra Geral JGP"))] > 0, 
+                   -0.1, 1.1)) +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "red")) +
+  scale_x_discrete(label = c("spx"   = "S&P",
+                             "spxew" = "S&P EW",
+                             "ixic"  = "NASDAQ",
+                             "rut"   = "Russell",
+                             "dji"   = "Dow Jones",
+                             # "acwi"  = "MSCI ACWI",
+                             # "cbu7"  = "CBUL.7",
+                             "agg"   = "AGG",
+                             "hg"    = "High Grade",
+                             "hy"    = "High Yield",
+                             "sgov"  = "Juros de Curto Prazo",
+                             "tip"   = "Inflação Longa",
+                             "stip"  = "Inflação Curta",
+                             "dxy"   = "Índice do Dólar")) +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.border = element_blank(),
+        axis.line.x.bottom = element_line(color = "black"),
+        axis.line.y.left =  element_line(color = "black")) +
+  labs(title = "Retorno no mês",
+       x = NULL, 
+       y = "Retorno (%)",
+       caption = "Capri FO com dados da Quandl")
+
+ggsave("acumulado no mes.png", 
+       width = 4800, 
+       # width = 15,
+       height = 2160, 
+       # height = 8.661,
+       units = "px",
+       # units = "in",
+       dpi = 576, 
+       # dpi = 800,
+       path = paste0(getwd(), "/gráficos/offshore"))
 
 data %>% 
   filter(Data >= last(data$Data) - 360,
