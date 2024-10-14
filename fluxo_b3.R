@@ -1,5 +1,4 @@
 
-
 # Pacotes -----------------------------------------------------------------
 
 library(tidyverse)
@@ -12,7 +11,6 @@ Sys.setenv("LANGUAGE" = "Pt")
 Sys.setlocale("LC_ALL", "Portuguese")
 
 # Coleta de dados ---------------------------------------------------------
-
 
 data = read.csv2(paste0(getwd(), "/Dados/fluxo-estrangeiro.csv"),
                   sep = ",", 

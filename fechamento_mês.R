@@ -1,10 +1,9 @@
 
-# Carregando pacotes ------------------------------------------------------
+# Pacotes -----------------------------------------------------------------
 
 library(tidyverse)
 library(openxlsx)
 library(quantmod)
-library(Quandl)
 
 # Setup -------------------------------------------------------------------
 
@@ -13,34 +12,101 @@ rm(list = ls())
 Sys.setenv("LANGUAGE" = "Pt")
 Sys.setlocale("LC_ALL", "Portuguese")
 
-Quandl.api_key('on_Vk-ogkmufJBMudwhZ')
+simplify_dfs = function(df_list, col_indices) {
+  simplified_dfs = lapply(seq_along(df_list), function(i) {
+    df = df_list[[i]] 
+    col_index = col_indices[i] 
+    simplified_df = data.frame(date = as.Date(rownames(df)), 
+                               value = df[, col_index]) 
+    colnames(simplified_df)[2] = names(df_list)[i] 
+    return(simplified_df)
+  })
+  
+  merged_df = Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), 
+                     simplified_dfs) %>% 
+    as_tibble()
+  return(merged_df)
+}
 
 # Coleta de dados ---------------------------------------------------------
 
-onshore <- readxl::read_excel(paste0(getwd(), "/Dados/index.xlsx"), sheet = 1) %>%
+onshore <- readxl::read_excel(paste0(getwd(), 
+                                     "/Dados/index.xlsx"), 
+                              sheet = 1) %>%
   `colnames<-`(c("Ativo",
                  "Data",
                  "Cota")) %>%
-  mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
+  mutate(Data = as.Date(Data, 
+                        format = "%d/%m/%Y"))
 
-getSymbols(c("^SPX", "^DJI", "^RUT", "^IXIC", "AGG", "STIP", "TIP", "SGOV", "DX-Y.NYB"), src = 'yahoo', return.class = "data.frame")
-getSymbols(c("BAMLHYH0A0HYM2TRIV", "BAMLCC0A0CMTRIV"), src = 'FRED', return.class = "data.frame")
+getSymbols(c(
+  "^SPX",
+  "^DJI",
+  "^RUT", 
+  "^IXIC",
+  "^SPXEW",
+  "AGG",
+  "STIP",
+  "TIP",
+  "SGOV",
+  "DX-Y.NYB"
+  ), 
+  src = 'yahoo', 
+  return.class = "data.frame")
 
-SPX <- data.frame(date = as.Date(rownames(SPX)), SPX[,4])
-IXIC <- data.frame(date = as.Date(rownames(IXIC)), IXIC[,4])
-DJI <- data.frame(date = as.Date(rownames(DJI)), DJI[,4])
-RUT <- data.frame(date = as.Date(rownames(RUT)), RUT[,4])
-AGG <- data.frame(date = as.Date(rownames(AGG)), AGG[,6])
-TIP <- data.frame(date = as.Date(rownames(TIP)), TIP[,6])
-STIP <- data.frame(date = as.Date(rownames(STIP)), STIP[,6])
-SGOV <- data.frame(date = as.Date(rownames(SGOV)), SGOV[,6])
-DXY <- data.frame(date = as.Date(rownames(`DX-Y.NYB`)), `DX-Y.NYB`[,4])
-HG <- data.frame(date = as.Date(rownames(BAMLCC0A0CMTRIV)), BAMLCC0A0CMTRIV)
-HY <- data.frame(date = as.Date(rownames(BAMLHYH0A0HYM2TRIV)), BAMLHYH0A0HYM2TRIV)
+getSymbols(c(
+  "BAMLHYH0A0HYM2TRIV", 
+  "BAMLCC0A0CMTRIV"
+  ), 
+  src = 'FRED',
+  return.class = "data.frame")
 
-offshore <- Reduce(function(x, y) merge(x, y, by = "date", all = TRUE), list(SPX, IXIC, DJI, RUT, AGG, TIP, STIP, SGOV, DXY, HG, HY))
-offshore <- offshore %>% 
-  `colnames<-`(c("date", "SPX", "IXIC", "DJI", "RUT", "AGG", "TIP", "STIP", "SGOV", "DXY", "HG", "HY")) %>% 
+offshore_list = list(
+  AGG   = `AGG`,
+  HG    =  BAMLCC0A0CMTRIV,
+  HY    =  BAMLHYH0A0HYM2TRIV,
+  DJI   = `DJI`,
+  DXY   = `DX-Y.NYB`,
+  IXIC  = `IXIC`,
+  RUT   = `RUT`,
+  SGOV  = `SGOV`,
+  SPX   = `SPX`,
+  SPXEW = `SPXEW`,
+  STIP  = `STIP`,
+  TIP   = `TIP`
+  )
+
+col_indices = c(
+  6,
+  1, 
+  1,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6,
+  6, 
+  6,
+  6)
+
+offshore_df = simplify_dfs(offshore_list, col_indices)
+
+rm(
+  `AGG`,
+  BAMLCC0A0CMTRIV,
+  BAMLHYH0A0HYM2TRIV,
+  `DJI`,
+  `DX-Y.NYB`,
+  `IXIC`,
+  `RUT`,
+  `SGOV`,
+  `SPX`,
+  `SPXEW`,
+  `STIP`,
+  `TIP`
+)
+offshore <- offshore_df %>% 
   pivot_longer(cols = -1, 
                names_to = "Ativo",
                values_to = "Cota") %>% 
