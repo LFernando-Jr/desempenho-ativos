@@ -27,7 +27,9 @@ glimpse(data)
 
 data %<>% 
   group_by(name) %>% 
-  mutate(var = (value/lag(value, 1) - 1) * 100,
+  mutate(name = case_when(name == "IDA-IPCA Infraestrutura"~"IDA-Infra", 
+                          TRUE ~ name),
+         var = (value/lag(value, 1) - 1) * 100,
          acumulado_12_meses = (zoo::rollapply(1 + var/100, 
                                               width = 252, 
                                               FUN = prod, 
@@ -92,13 +94,14 @@ for (i in retorno) {
         "Ibovespa" = "#2F47AD",
         "CDI"      = "black",
         "IHFA"     = "#E47632",
-        "IMA-B"    = "#AD4728",
-        "IMA-B 5"  = "#3BA58B",
-        "IRF-M"    = "#31AFE0",
-        "SMLL"     = "#F4A261",
+        "IDA-DI"   = "#FFBB78",
+        "IMA-B"    = "#D62728",
+        "IMA-B 5"  = "#31AFE0",
+        "IRF-M"    = "#9467BD",
+        "SMLL"     = "#E377C2",
         "IFIX"     = "#7F5A58",
-        "Dólar"    = "#FF6F61"
-      ),
+        "Dólar"    = "#AEC7E8"
+        ),
       labels = c(
         "Ibovespa" = paste0(
           "Ibovespa: ", 
@@ -107,6 +110,10 @@ for (i in retorno) {
         "CDI" = paste0(
           "CDI: ", 
           round(lst_dt$value[which(lst_dt$name == "CDI" & 
+                                     lst_dt$retorno == i)],2), "%"),
+        "IDA-DI" = paste0(
+          "IDA-DI: ", 
+          round(lst_dt$value[which(lst_dt$name == "IDA-DI" & 
                                      lst_dt$retorno == i)],2), "%"),
         "IHFA" = paste0(
           "IHFA: ", 
@@ -140,7 +147,7 @@ for (i in retorno) {
     ) +
     scale_linetype_manual(values = c("CDI"                  = "longdash", 
                                      "Ibovespa"             = "solid",
-                                     "CDI"                  = "solid",
+                                     "IDA-DI"               = "solid",
                                      "Idex-Infra Geral JGP" = "solid",
                                      "Idex-CDI Geral JGP"   = "solid",
                                      "IHFA"                 = "solid",
@@ -165,9 +172,9 @@ for (i in retorno) {
          width = 4800, 
          # width = 15,
          height = 2160, 
-         # height = 8.661,
-         units = "px",
-         # units = "in",
+         # height = 8.661, 
+         units = "px", 
+         # units = "in", 
          dpi = 576, 
          # dpi = 800,
          path = paste0(getwd(), "/gráficos/onshore"))

@@ -31,7 +31,7 @@ simplify_dfs = function(df_list, col_indices) {
 # Coleta de dados ---------------------------------------------------------
 
 onshore <- readxl::read_excel(paste0(getwd(), 
-                                     "/Dados/index.xlsx"), 
+                                     "/dados/index.xlsx"), 
                               sheet = 1) %>%
   `colnames<-`(c("Ativo",
                  "Data",
@@ -158,8 +158,8 @@ tbl = data %>%
 
 tbl
 
-wb <- loadWorkbook(paste0(getwd(), "/Dados/fechamento_mes.xlsx"))
+wb <- loadWorkbook(paste0(getwd(), "/dados/fechamento_mes.xlsx"))
 
 writeData(wb, "Fechamento", tbl)
 
-saveWorkbook(wb, paste0(getwd(), "/Dados/fechamento_mes.xlsx"), overwrite = TRUE)
+saveWorkbook(wb, paste0(getwd(), "/dados/fechamento_mes.xlsx"), overwrite = TRUE)

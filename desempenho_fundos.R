@@ -25,9 +25,23 @@ funds = readxl::read_excel(paste0(getwd(), "/dados/fundos.xlsx"),
                  name  = `Nome do Ativo`,
                  value = `Número Índice`,
                 .keep  = "none") %>% 
-          filter(name == "IHFA"))
+          filter(name == "IHFA")) %>% 
+  mutate(name = case_when(
+    name == "ABSOLUTE VERTEX FIF CIC MULTIMERCADO" ~ "Vertex",
+    name == "JGP STRATEGY FIC MULTIMERCADO" ~ "Strategy",
+    name == "KAPITALO ZETA FIC MULTIMERCADO" ~ "Zeta",                                     
+    name == "KINEA ATLAS II RESP LIMITADA FIF MULTIMERCADO" ~ "Atlas II",
+    name == "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" ~ "Legacy",
+    name == paste0("OCCAM RETORNO ABSOLUTO ADVISORY ",
+                   "RESP LIMITADA FIF CIC MULTIMERCADO") ~ "Retorno Absoluto",
+    name == "SPX NIMITZ FEEDER FIC MULTIMERCADO" ~ "Nimitz",                                 
+    name == "VERDE AM X60 ADVISORY FIC MULTIMERCADO" ~ "Verde",
+    name == "IHFA" ~ "IHFA"
+  ))
 
-funds %<>% filter(!name == "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO")
+funds$name %>% unique()
+
+funds %<>% filter(name != "Retorno Absoluto")
 
 cdi = readxl::read_excel(paste0(getwd(), "/dados/index.xlsx"), 
                          sheet = 1) %>%
@@ -116,7 +130,7 @@ for (i in retorno) {
   
   g = data %>% 
     filter(., case_when(
-      i == "excess_var_36_meses" ~ date >= last(data$date) - 360,
+      i == "excess_var_36_meses" ~ date >= floor_date(Sys.Date(), "month")-252,
       i == "excess_var_ano" ~ date >= floor_date(Sys.Date(), "year"),
       i == "excess_var_mes" ~ date >= floor_date(Sys.Date(), "month")),
       retorno == i) %>% 
@@ -125,6 +139,7 @@ for (i in retorno) {
                                           desc(value)
                          )$name)) %>%
     ggplot() +
+    geom_hline(yintercept = 0) +
     aes(date, value, colour = name, linetype = name) +
     geom_line(linewidth = .75) +
     theme_bw() + theme(panel.grid.minor = element_blank(), 
@@ -143,77 +158,77 @@ for (i in retorno) {
                    i == "excess_var_mes" ~ "1 day")) +
     scale_colour_manual(
       values = c(
-        "ABSOLUTE VERTEX FIC MULTIMERCADO"                 = "#2F47AD",
-        "IHFA"                                             = "black",
-        "JGP STRATEGY FIC MULTIMERCADO"                    = "#8C977D",
-        "KINEA ATLAS II RESP LIMITADA FIF MULTIMERCADO"    = "#31AFE0",
-        "SPX NIMITZ FEEDER FIC MULTIMERCADO"               = "#E47632",
-        "KAPITALO ZETA FIC MULTIMERCADO"                   = "#AD4728",
-        "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" = "#3BA58B",
-        "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO"         = "#D4A83F",
-        "VERDE AM X60 ADVISORY FIC MULTIMERCADO"           = "#2f5a3d"
+        "Vertex"           = "#2F47AD",
+        "IHFA"             = "black",
+        "Strategy"         = "#8C977D",
+        "Atlas II"         = "#31AFE0",
+        "Nimitz"           = "#E47632",
+        "Zeta"             = "#AD4728",
+        "Retorno Absoluto" = "#3BA58B",
+        "Legacy"           = "#D4A83F",
+        "Verde"            = "#2f5a3d"
       ),
       labels = c(
-        "ABSOLUTE VERTEX FIC MULTIMERCADO" = paste0(
+        "Vertex" = paste0(
           "Absolute: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "ABSOLUTE VERTEX FIC MULTIMERCADO" & 
+            lst_dt$name == "Vertex" & 
               lst_dt$retorno == i)],2), "%"),
         "IHFA" = paste0(
           "IHFA: ", 
           round(lst_dt$value[which(
             lst_dt$name == "IHFA" & 
               lst_dt$retorno == i)],2), "%"),
-        "JGP STRATEGY FIC MULTIMERCADO" = paste0(
+        "Strategy" = paste0(
           "JGP: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "JGP STRATEGY FIC MULTIMERCADO" & 
+            lst_dt$name == "Strategy" & 
               lst_dt$retorno == i)],2), "%"),
-        "KINEA ATLAS II RESP LIMITADA FIF MULTIMERCADO" = paste0(
+        "Atlas II" = paste0(
           "Kinea: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "KINEA ATLAS II RESP LIMITADA FIF MULTIMERCADO" & 
+            lst_dt$name == "Atlas II" & 
               lst_dt$retorno == i)],2), "%"),
-        "SPX NIMITZ FEEDER FIC MULTIMERCADO" = paste0(
+        "Nimitz" = paste0(
           "SPX: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "SPX NIMITZ FEEDER FIC MULTIMERCADO" & 
+            lst_dt$name == "Nimitz" & 
               lst_dt$retorno == i)],2), "%"),
-        "KAPITALO ZETA FIC MULTIMERCADO" = paste0(
+        "Zeta" = paste0(
           "Kapitalo: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "KAPITALO ZETA FIC MULTIMERCADO" & 
+            lst_dt$name == "Zeta" & 
               lst_dt$retorno == i)],2), "%"),
-        "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" = paste0(
+        "Retorno Absoluto" = paste0(
           "Occam: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" & 
+            lst_dt$name == "Retorno Absoluto" & 
               lst_dt$retorno == i)],2), "%"),
-        "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" = paste0(
+        "Legacy" = paste0(
           "Legacy: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO" & 
+            lst_dt$name == "Legacy" & 
               lst_dt$retorno == i)],2), "%"),
-        "VERDE AM X60 ADVISORY FIC MULTIMERCADO" = paste0(
+        "Verde" = paste0(
           "Verde: ", 
           round(lst_dt$value[which(
-            lst_dt$name == "VERDE AM X60 ADVISORY FIC MULTIMERCADO" & 
+            lst_dt$name == "Verde" & 
               lst_dt$retorno == i)],2), "%"))) +
     scale_linetype_manual(values = c(
-      "ABSOLUTE VERTEX FIC MULTIMERCADO"                 = "solid",
-      "IHFA"                                             = "longdash",
-      "JGP STRATEGY FIC MULTIMERCADO"                    = "solid",
-      "KINEA ATLAS II RESP LIMITADA FIF MULTIMERCADO"    = "solid",
-      "SPX NIMITZ FEEDER FIC MULTIMERCADO"               = "solid",
-      "KAPITALO ZETA FIC MULTIMERCADO"                   = "solid",
-      "OCCAM RETORNO ABSOLUTO ADVISORY FIC MULTIMERCADO" = "solid",
-      "LEGACY CAPITAL ADVISORY FIC MULTIMERCADO"         = "solid",
-      "VERDE AM X60 ADVISORY FIC MULTIMERCADO"           = "solid"
+      "Vertex"           = "solid",
+      "IHFA"             = "longdash",
+      "Strategy"         = "solid",
+      "Atlas II"         = "solid",
+      "Nimitz"           = "solid",
+      "Zeta"             = "solid",
+      "Retorno Absoluto" = "solid",
+      "Legacy"           = "solid",
+      "Verde"            = "solid"
     )) +
     guides(linetype = "none") +
     labs(title = NULL,
          subtitle = case_when(
-           i == "excess_var_36_meses" ~ "Excesso de retorno trianual acumulado",
+           i == "excess_var_36_meses" ~ "Excesso de retorno trianual",
            i == "excess_var_ano" ~ "Excesso retorno acumulado no ano",
            i == "excess_var_mes" ~ "Excesso retorno acumulado no mês"),
          caption = paste0("Capri FO com dados da Quantum Axis até ", 
