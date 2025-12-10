@@ -1,4 +1,15 @@
+# Arquivos de ambiente local
+.Renviron
 .Rproj.user
 .Rhistory
 .RData
+
+# Arquivos de diagnóstico do RStudio
 .Ruserdata
+
+# Biblioteca de pacotes do renv
+renv/library/
+renv/staging/
+
+# Dados gerados pelos scripts
+output

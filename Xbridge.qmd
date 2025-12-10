@@ -1,0 +1,274 @@
+---
+title: "Xbridge"
+format: html
+self-contained: true
+editor: visual
+---
+
+```{r, message=FALSE, results=FALSE, warning=FALSE, echo=FALSE}
+
+library(tidyverse)
+
+Sys.setenv("LANGUAGE" = "Pt")
+Sys.setlocale("LC_ALL", "Portuguese")
+
+data = readxl::read_excel(path = paste0(getwd(),
+                                        "/dados/Xbridge.xlsx"),
+                          sheet = "Reservas do Mercado_BaseDeDados",
+                          col_names = TRUE) %>% 
+  janitor::clean_names() %>% 
+  mutate(solicitado = as.Date(solicitado),
+         vencimento = as.Date(vencimento, format = "%d/%m/%Y"),
+         financeiro_bruto = as.double(financeiro_bruto))
+
+tickers = readxl::read_excel(path = paste0(getwd(),
+                                        "/dados/Xbridge.xlsx"),
+                             sheet = "Limites aprovados",
+                             col_names = TRUE) %>% 
+  janitor::clean_names() %>% 
+  select(ticker) %>% 
+  drop_na()
+
+```
+
+Última negociação dos ativos DI+ aprovados
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+data %>% 
+  dplyr::filter(ativo %in% tickers$ticker,
+                indexador == "DI+") %>% 
+  group_by(ativo, solicitado) %>% 
+  summarise(emissor_risco    = emissor_risco,
+            # indexador        = indexador,
+            taxa_bruta       = mean(taxa_bruta),
+            financeiro_bruto = sum(financeiro_bruto),
+            vencimento       = vencimento,
+           .groups = "drop") %>% 
+  arrange(desc(solicitado)) %>% 
+  slice(1,
+       .by = ativo) %>% 
+  set_names(c("Ativo", 
+              "Solicitado", 
+              "Emissor",
+              "Taxa bruta",
+              "Financeiro bruto",
+              "Vencimento")) %>% 
+  print(n = Inf)
+
+```
+
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, results=FALSE, warning=FALSE}
+
+# data %>% 
+#   dplyr::filter(indexador %in% c("IPCA+",
+#                                  "DI+",
+#                                  "PREFIXADO",
+#                                  "% DI")) %>%
+#   group_by(solicitado, indexador) %>% 
+#   summarise(financeiro_bruto = sum(financeiro_bruto)/1000000,
+#             .groups = "drop") %>% 
+#   mutate(mm = zoo::rollapplyr(financeiro_bruto, 
+#                               width = 21, 
+#                               FUN = mean, 
+#                               fill = NA)) %>%
+#   ggplot() + 
+#   geom_col(aes(x = solicitado, y = financeiro_bruto), 
+#            fill   = "steelblue",
+#            colour = "steelblue") + 
+#   geom_point(aes(x = solicitado, y = mm)) +
+#   theme_bw() +
+#   # scale_x_date(date_labels = "%b-%y", date_breaks = "months") +
+#   scale_y_continuous(n.breaks = 10) +
+#   theme(panel.grid.minor = element_blank(), 
+#         axis.line        = element_line(colour = "black"),
+#         legend.title     = element_blank(), 
+#         axis.title       = element_blank(), 
+#         strip.background = element_blank()) +
+#   labs(title = "Volume financeiro - Xbridge",
+#        subtitle = "Média móvel de 21 dias") +
+#   facet_wrap(~indexador, scales = "free")
+
+
+```
+
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, results=FALSE, warning=FALSE}
+
+data %>% 
+  dplyr::filter(ativo %in% tickers$ticker) %>% 
+  group_by(solicitado, indexador) %>% 
+  summarise(financeiro_bruto = sum(financeiro_bruto)/1000000,
+            .groups = "drop") %>% 
+  ggplot() + 
+  geom_col(aes(x = solicitado, y = financeiro_bruto), 
+           fill   = "steelblue",
+           colour = "steelblue") + 
+  theme_bw() +
+  scale_x_date(date_labels = "%b-%y", date_breaks = "2 months") +
+  scale_y_continuous(n.breaks = 10) +
+  theme(panel.grid.minor = element_blank(), 
+        axis.line        = element_line(colour = "black"),
+        legend.title     = element_blank(), 
+        axis.title       = element_blank(), 
+        strip.background = element_blank()) +
+  labs(title = "Volume financeiro (R$ milhões)",
+       subtitle = "Emissores aprovados") +
+  facet_wrap(~indexador, scales = "free") 
+
+```
+
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, results=FALSE, warning=FALSE}
+
+data %>% 
+  dplyr::filter(ativo %in% tickers$ticker,
+                indexador %in% c("DI+", "IPCA+")) %>% 
+  group_by(solicitado, indexador) %>% 
+  summarise(taxa_bruta = mean(taxa_bruta),
+            .groups = "drop") %>%
+  ggplot() + 
+  geom_point(aes(x = solicitado, y = taxa_bruta)) +
+  geom_line(aes(x = solicitado, y = taxa_bruta)) +
+  theme_bw() +
+  # scale_x_date(date_labels = "%b-%y", date_breaks = "months") +
+  scale_y_continuous(n.breaks = 10) +
+  theme(panel.grid.minor = element_blank(), 
+        axis.line        = element_line(colour = "black"),
+        legend.title     = element_blank(), 
+        axis.title       = element_blank(), 
+        strip.background = element_blank()) +
+  labs(title = "Taxa média",
+       subtitle = "Emissores aprovados") +
+  facet_wrap(~indexador, scales = "free",
+             nrow = 2)
+
+```
+
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, results=FALSE, warning=FALSE}
+
+aprovados = data %>% 
+  dplyr::filter(ativo %in% tickers$ticker) %>% 
+  arrange(desc(solicitado)) %>%
+  dplyr::select(ativo) %>% 
+  unique()
+
+for (i in aprovados$ativo) {
+  
+  g_1 = data %>% 
+  dplyr::filter(ativo == i) %>% 
+  group_by(solicitado) %>% 
+  summarise(emissor_risco    = emissor_risco,
+            taxa_bruta       = mean(taxa_bruta),
+            financeiro_bruto = sum(financeiro_bruto)/1000,
+            vencimento       = vencimento,
+           .groups           = "drop") %>%
+    tail(n = 100) %>% 
+    ggplot() + 
+    # geom_col(aes(x = solicitado, y = financeiro_bruto), 
+    #        fill   = "steelblue",
+    #        colour = "steelblue") + 
+    geom_line(aes(x = solicitado, y = taxa_bruta)) +
+    geom_point(aes(x = solicitado, y = taxa_bruta)) +
+    theme_bw() +
+    theme(panel.grid.minor = element_blank(), 
+          axis.line        = element_line(colour = "black"),
+          legend.title     = element_blank(), 
+          axis.title       = element_blank(), 
+          strip.background = element_blank()) +
+    scale_y_continuous(n.breaks = 10) +
+    scale_x_date(date_breaks = "months", date_labels = "%b/%y") +
+    labs(title = paste0("Taxa média - ", 
+                        data$emissor_risco[which(data$ativo == i)][1],
+                        " - ",
+                        data$vencimento[which(data$ativo == i)][1],
+                        " - ",
+                        i),
+         subtitle = data$indexador[which(data$ativo == i)][1])
+  
+  g_2 = data %>% 
+  dplyr::filter(ativo == i) %>% 
+  group_by(solicitado) %>% 
+  summarise(emissor_risco    = emissor_risco,
+            taxa_bruta       = mean(taxa_bruta),
+            financeiro_bruto = sum(financeiro_bruto)/1000,
+            vencimento       = vencimento,
+           .groups           = "drop") %>%
+    tail(n = 100) %>%
+    ggplot() + 
+    geom_col(aes(x = solicitado, y = financeiro_bruto),
+           fill   = "steelblue",
+           colour = "steelblue") +
+    # geom_line(aes(x = solicitado, y = taxa_bruta)) +
+    # geom_point(aes(x = solicitado, y = taxa_bruta)) +
+    theme_bw() +
+    theme(panel.grid.minor = element_blank(), 
+          axis.line        = element_line(colour = "black"),
+          legend.title     = element_blank(), 
+          axis.title       = element_blank(), 
+          strip.background = element_blank()) +
+    scale_y_continuous(n.breaks = 10) +
+    scale_x_date(date_breaks = "months", date_labels = "%b/%y") +
+    labs(title = "Volume financeiro",
+         subtitle = "R$ mil")
+
+  g = gridExtra::grid.arrange(g_1, g_2)
+  
+  plot(g)
+  
+}
+
+```
+
+Bancários
+
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, results=FALSE, warning=FALSE}
+
+data %>% 
+  mutate(prazo = vencimento - solicitado) %>% 
+   dplyr::filter(tipo == "CDB",
+                 prazo > 720) %>% 
+  group_by(solicitado, indexador) %>% 
+  summarise(financeiro_bruto = sum(financeiro_bruto)/1000000,
+            .groups = "drop") %>% 
+  ggplot() + 
+  geom_col(aes(x = solicitado, y = financeiro_bruto), 
+           fill   = "steelblue",
+           colour = "steelblue") + 
+  theme_bw() +
+  scale_x_date(date_labels = "%b-%y", date_breaks = "2 months") +
+  scale_y_continuous(n.breaks = 10) +
+  theme(panel.grid.minor = element_blank(), 
+        axis.line        = element_line(colour = "black"),
+        legend.title     = element_blank(), 
+        axis.title       = element_blank(), 
+        strip.background = element_blank()) +
+  labs(title = "Bancários - Volume financeiro (R$ milhões)",
+       subtitle = "Vencimento após 2 anos") +
+  facet_wrap(~indexador, scales = "free") 
+```
+
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE, results=FALSE, warning=FALSE}
+
+data %>% 
+  mutate(prazo = vencimento - solicitado) %>% 
+  dplyr::filter(tipo == "CDB",
+                indexador %in% c("DI+", "% DI"),
+                prazo > 720) %>% 
+  group_by(solicitado, indexador) %>% 
+  summarise(taxa_bruta = median(taxa_bruta),
+            .groups = "drop") %>% 
+  ggplot() + 
+  geom_point(aes(x = solicitado, y = taxa_bruta)) +
+  geom_line(aes(x = solicitado, y = taxa_bruta)) +
+  theme_bw() +
+  # scale_x_date(date_labels = "%b-%y", date_breaks = "months") +
+  scale_y_continuous(n.breaks = 10) +
+  theme(panel.grid.minor = element_blank(), 
+        axis.line        = element_line(colour = "black"),
+        legend.title     = element_blank(), 
+        axis.title       = element_blank(), 
+        strip.background = element_blank()) +
+  labs(title = "Bancários - Taxa mediana",
+       subtitle = "Vencimento após 2 anos") +
+  facet_wrap(~indexador, scales = "free",
+             nrow = 2)
+```
