@@ -1,0 +1,8 @@
+﻿"nome_xlsx";"nome_curto";"nome_plot";"nome_quantum";"taxa_adm_aa";"primeira_data_janela";"ultima_data_janela";"n_obs_janela";"revisar";"cobertura_36m";"motivo_exclusao"
+"Augme 30 II CIC de CIRF CP LP RL";"Augme 30 II";"Augme 30 II";"AUGME 30 II RESP LIMITADA FIF RENDA FIXA CRÉDITO PRIVADO LP";"0,0060";"2023-09-29";"2026-06-30";"689";FALSE;FALSE;"Histórico inferior a 36 meses"
+"Bradesco Ultra II FIF - CIC RF CP LP - RL";"Bradesco Ultra II";"Bradesco Ultra II";"BRADESCO ULTRA II RESP LIMITADA FIF CIC RENDA FIXA CRÉDITO PRIVADO LP";"0,0060";"2024-07-01";"2026-06-30";"503";FALSE;FALSE;"Histórico inferior a 36 meses"
+"Legacy Capital Credit D15 FIF MM CP RL";"Legacy Capital Credit D15";"Legacy Capital Credit D15";"LEGACY CAPITAL CREDIT 15 FIF MULTIMERCADO";"0,0060";"2025-03-14";"2026-05-07";"288";FALSE;FALSE;"Série não chega à data final comum"
+"Persevera Yield FIRF LP";"Persevera Yield";"Persevera Yield";"PERSEVERA YIELD FI RENDA FIXA LP";"0,0070";"2023-10-02";"2026-06-30";"688";FALSE;FALSE;"Histórico inferior a 36 meses"
+"Tríade CIC CLasses FIM CP Resp Limitada";"Tríade";"Tríade";"TRÍADE FIF CIC MULTIMERCADO";"0,0066";"2024-05-06";"2026-06-30";"538";FALSE;FALSE;"Histórico inferior a 36 meses"
+"Vinland Crédito 10 FIC FIRF";"Vinland Crédito 10";"Vinland Crédito 10";"VINLAND CRÉDITO 10 FIC RENDA FIXA";"0,0050";"2024-01-31";"2026-06-30";"606";FALSE;FALSE;"Histórico inferior a 36 meses"
+"Western Asset Total Credit Plus FIF";"Western Asset Total Credit Plus";"Western Asset Total Credit Plus";"WESTERN ASSET TOTAL CREDIT PLUS CI RESP LIMITADA RENDA FIXA CRÉDITO PRIVADO";"0,0065";"2023-07-27";"2026-06-30";"734";FALSE;FALSE;"Histórico inferior a 36 meses"

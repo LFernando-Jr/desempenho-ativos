@@ -1,17 +1,22 @@
-
 source("renv/activate.R")
 
 # Lista de pacotes a serem carregados -------------------------------------
 
-pacotes = c("conflicted",
-            "tidyverse", 
-            "magrittr",
-            "readxl",
-            "openxlsx",
-            "quantmod",
-            "janitor",
-            "bizdays",
-            "tidyquant")
+pacotes = c(
+  "conflicted",
+  "tidyverse",
+  "magrittr",
+  "readxl",
+  "openxlsx",
+  "quantmod",
+  "janitor",
+  "bizdays",
+  "tidyquant",
+  "PerformanceAnalytics",
+  "lubridate",
+  "zoo",
+  "ggrepel"
+)
 
 lapply(pacotes, library, character.only = TRUE)
 
@@ -34,4 +39,4 @@ message(paste(
   "Ambiente pronto.",
   "Bem-vindo ao projeto 'desempenho-ativos'!",
   sep = " "
-  ))
+))
