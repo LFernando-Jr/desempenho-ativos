@@ -445,12 +445,16 @@ grafico_retorno_acumulado <- ggplot(
 
 print(grafico_retorno_acumulado)
 
-arquivo_grafico_acumulado <- paste0(
-  "grafico_retorno_acumulado_vs_",
-  benchmark_config$slug,
-  "_",
-  JANELA_ACUMULADA_MESES,
-  "m.png"
+arquivo_grafico_acumulado <- file.path(
+  "output",
+  "figures",
+  paste0(
+    "grafico_retorno_acumulado_vs_",
+    benchmark_config$slug,
+    "_",
+    JANELA_ACUMULADA_MESES,
+    "m.png"
+  )
 )
 
 ggsave(
