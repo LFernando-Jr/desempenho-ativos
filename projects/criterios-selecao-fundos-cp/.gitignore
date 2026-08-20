@@ -1,0 +1,3 @@
+# Bases intermediárias reproduzíveis
+/data/intermediate/*
+!/data/intermediate/.gitkeep
