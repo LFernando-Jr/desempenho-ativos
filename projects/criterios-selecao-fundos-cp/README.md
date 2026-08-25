@@ -4,10 +4,12 @@ Pipeline quantitativo para seleção de fundos high grade, com janela estrutural
 
 ## Como executar
 
-Abra o projeto `desempenho-ativos` para carregar o ambiente do `.Rprofile` e, a partir desta pasta, rode:
+Premissa operacional: abra a pasta raiz `desempenho-ativos` no Positron antes de rodar este pipeline. O diretório de trabalho da sessão R deve ser a raiz `desempenho-ativos`, não a pasta `projects/criterios-selecao-fundos-cp`.
+
+A partir da raiz `desempenho-ativos`, rode:
 
 ```r
-source("00_run_all.R")
+source("projects/criterios-selecao-fundos-cp/00_run_all.R")
 ```
 
 O runner cria os diretórios necessários e executa, no mesmo ambiente, as cinco etapas:

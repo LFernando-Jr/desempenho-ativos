@@ -1,21 +1,20 @@
 # ETAPA 5 — GRÁFICOS E EXPORTAÇÃO
 # Execute preferencialmente por 00_run_all.R.
 
-
-cores_quartis <- c(
+cores_quartis = c(
   "Q1 - Destaque" = "#F8766D",
   "Q2 - Aprovado" = "#7CAE00",
   "Q3 - Observação" = "#00BFC4",
   "Q4 - Descartado" = "#C77CFF"
 )
 
-grafico_ranking <- ranking_fundos |>
+grafico_ranking = ranking_fundos %>%
   mutate(
     nome_plot = fct_reorder(
       nome_plot,
       score_preliminar
     )
-  ) |>
+  ) %>%
   ggplot(
     aes(
       x = score_preliminar,
@@ -35,57 +34,45 @@ grafico_ranking <- ranking_fundos |>
     )
   ) +
   labs(
-    title =
-      "Score preliminar dos fundos high grade",
-    
+    title = "Score preliminar dos fundos high grade",
+
     subtitle = paste(
       "Retorno 20% | Consistência de 36 meses 25% |",
       "Risco 20% | Custo 25% | Diferenciação 10%"
     ),
-    
-    x =
-      "Nota final",
-    
-    y =
-      NULL,
-    
-    fill =
-      NULL
+
+    x = "Nota final",
+
+    y = NULL,
+
+    fill = NULL
   ) +
   theme_minimal(base_size = 11) +
   theme(
-    panel.grid.minor =
-      element_blank(),
-    
-    plot.title =
-      element_text(face = "bold"),
-    
-    axis.text.y =
-      element_text(size = 7)
+    panel.grid.minor = element_blank(),
+
+    plot.title = element_text(face = "bold"),
+
+    axis.text.y = element_text(size = 7)
   )
 
 print(grafico_ranking)
 
-altura_ranking <- max(
+altura_ranking = max(
   9,
   nrow(ranking_fundos) * 0.28
 )
 
 ggsave(
-  filename =
-    "output/figures/grafico_ranking_fundos_36m.png",
-  
-  plot =
-    grafico_ranking,
-  
-  width =
-    11,
-  
-  height =
-    altura_ranking,
-  
-  dpi =
-    300
+  filename = "projects/criterios-selecao-fundos-cp/output/figures/grafico_ranking_fundos_36m.png",
+
+  plot = grafico_ranking,
+
+  width = 11,
+
+  height = altura_ranking,
+
+  dpi = 300
 )
 
 # ------------------------------------------------------------
@@ -95,7 +82,7 @@ ggsave(
 # Assim, Q1 em custo significa o primeiro quartil do score de custo,
 # e não necessariamente Q1 no ranking final.
 
-base_scores_long <- ranking_fundos |>
+base_scores_long = ranking_fundos %>%
   select(
     nome_plot,
     score_retorno,
@@ -103,55 +90,52 @@ base_scores_long <- ranking_fundos |>
     score_risco,
     score_custo,
     score_diferenciacao
-  ) |>
+  ) %>%
   pivot_longer(
     cols = starts_with("score_"),
     names_to = "bloco",
     values_to = "nota"
-  ) |>
-  group_by(bloco) |>
+  ) %>%
+  group_by(bloco) %>%
   mutate(
-    quartil_bloco =
-      ntile(desc(nota), 4),
-    
+    quartil_bloco = ntile(desc(nota), 4),
+
     classificacao_bloco = case_when(
       quartil_bloco == 1 ~ "Q1 - Destaque",
       quartil_bloco == 2 ~ "Q2 - Aprovado",
       quartil_bloco == 3 ~ "Q3 - Observação",
       quartil_bloco == 4 ~ "Q4 - Descartado"
     )
-  ) |>
+  ) %>%
   ungroup()
 
-config_blocos <- tribble(
-  ~bloco_id,               ~titulo,                    ~subtitulo,                                              ~arquivo,
-  "score_retorno",         "Score de retorno",         "Excesso anualizado sobre o CDI",                       "output/figures/grafico_score_retorno_36m.png",
-  "score_consistencia",    "Score de consistência",    "Hit rates mensal e em janelas móveis de 6 e 36 meses", "output/figures/grafico_score_consistencia_36m.png",
-  "score_risco",           "Score de risco",           "Drawdown, cauda negativa e volatilidade do excesso",   "output/figures/grafico_score_risco_36m.png",
-  "score_custo",           "Score de custo",           "Taxa de administração e eficiência do custo",          "output/figures/grafico_score_custo_36m.png",
-  "score_diferenciacao",   "Score de diferenciação",   "Correlação média e máxima com os demais fundos",        "output/figures/grafico_score_diferenciacao_36m.png"
+config_blocos = tribble(
+  ~bloco_id             , ~titulo                  , ~subtitulo                                             , ~arquivo                                             ,
+  "score_retorno"       , "Score de retorno"       , "Excesso anualizado sobre o CDI"                       , "projects/criterios-selecao-fundos-cp/output/figures/grafico_score_retorno_36m.png"       ,
+  "score_consistencia"  , "Score de consistência"  , "Hit rates mensal e em janelas móveis de 6 e 36 meses" , "projects/criterios-selecao-fundos-cp/output/figures/grafico_score_consistencia_36m.png"  ,
+  "score_risco"         , "Score de risco"         , "Drawdown, cauda negativa e volatilidade do excesso"   , "projects/criterios-selecao-fundos-cp/output/figures/grafico_score_risco_36m.png"         ,
+  "score_custo"         , "Score de custo"         , "Taxa de administração e eficiência do custo"          , "projects/criterios-selecao-fundos-cp/output/figures/grafico_score_custo_36m.png"         ,
+  "score_diferenciacao" , "Score de diferenciação" , "Correlação média e máxima com os demais fundos"       , "projects/criterios-selecao-fundos-cp/output/figures/grafico_score_diferenciacao_36m.png"
 )
 
-gera_grafico_bloco <- function(
-    bloco_id,
-    titulo,
-    subtitulo,
-    arquivo
+gera_grafico_bloco = function(
+  bloco_id,
+  titulo,
+  subtitulo,
+  arquivo
 ) {
-  dados_bloco <- base_scores_long |>
-    filter(.data$bloco == bloco_id) |>
+  dados_bloco = base_scores_long %>%
+    filter(.data$bloco == bloco_id) %>%
     mutate(
-      nome_plot =
-        fct_reorder(nome_plot, nota),
-      
-      classificacao_bloco =
-        factor(
-          classificacao_bloco,
-          levels = names(cores_quartis)
-        )
+      nome_plot = fct_reorder(nome_plot, nota),
+
+      classificacao_bloco = factor(
+        classificacao_bloco,
+        levels = names(cores_quartis)
+      )
     )
-  
-  grafico <- ggplot(
+
+  grafico = ggplot(
     dados_bloco,
     aes(
       x = nota,
@@ -180,18 +164,15 @@ gera_grafico_bloco <- function(
     ) +
     theme_minimal(base_size = 11) +
     theme(
-      panel.grid.minor =
-        element_blank(),
-      
-      plot.title =
-        element_text(face = "bold"),
-      
-      axis.text.y =
-        element_text(size = 7)
+      panel.grid.minor = element_blank(),
+
+      plot.title = element_text(face = "bold"),
+
+      axis.text.y = element_text(size = 7)
     )
-  
+
   print(grafico)
-  
+
   ggsave(
     filename = arquivo,
     plot = grafico,
@@ -207,14 +188,14 @@ pwalk(
 )
 
 # Base tabular dos quartis por bloco.
-quartis_blocos <- base_scores_long |>
+quartis_blocos = base_scores_long %>%
   select(
     nome_plot,
     bloco,
     nota,
     quartil_bloco,
     classificacao_bloco
-  ) |>
+  ) %>%
   arrange(
     bloco,
     desc(nota)
@@ -222,7 +203,7 @@ quartis_blocos <- base_scores_long |>
 
 write_excel_csv2(
   quartis_blocos,
-  "data/intermediate/quartis_por_bloco_36m.csv"
+  "projects/criterios-selecao-fundos-cp/data/intermediate/quartis_por_bloco_36m.csv"
 )
 
 # ------------------------------------------------------------
@@ -232,38 +213,38 @@ write_excel_csv2(
 # (1 + retorno do fundo) / (1 + retorno do IDA) - 1.
 # A linha zero representa desempenho igual ao benchmark.
 
-benchmark_config <- switch(
+benchmark_config = switch(
   BENCHMARK_ACUMULADO,
-  
+
   "IDA-DI" = list(
     coluna = "ret_ida_di_m",
     rotulo = "IDA-DI",
     slug = "ida_di"
   ),
-  
+
   "IDA LIQ-DI" = list(
     coluna = "ret_ida_liq_di_m",
     rotulo = "IDA LIQ-DI",
     slug = "ida_liq_di"
   ),
-  
+
   stop(
     "BENCHMARK_ACUMULADO deve ser ",
     "'IDA-DI' ou 'IDA LIQ-DI'."
   )
 )
 
-data_fim_mensal <- floor_date(
+data_fim_mensal = floor_date(
   data_fim,
   unit = "month"
 )
 
-data_inicio_acumulado <- data_fim_mensal %m-%
+data_inicio_acumulado = data_fim_mensal %m-%
   months(JANELA_ACUMULADA_MESES - 1L)
 
-base_retorno_acumulado <- fundos_mensais |>
+base_retorno_acumulado = fundos_mensais %>%
   inner_join(
-    ranking_fundos |>
+    ranking_fundos %>%
       select(
         nome_plot,
         quartil_score,
@@ -272,71 +253,66 @@ base_retorno_acumulado <- fundos_mensais |>
       ),
     by = "nome_plot",
     relationship = "many-to-one"
-  ) |>
+  ) %>%
   mutate(
-    ret_benchmark_m =
-      .data[[benchmark_config$coluna]]
-  ) |>
+    ret_benchmark_m = .data[[benchmark_config$coluna]]
+  ) %>%
   filter(
     mes >= data_inicio_acumulado,
     mes <= data_fim_mensal,
     !is.na(ret_benchmark_m)
-  ) |>
+  ) %>%
   group_by(
     nome_plot,
     quartil_score,
     classificacao,
     shortlist
-  ) |>
+  ) %>%
   filter(
-    n_distinct(mes) ==
-      JANELA_ACUMULADA_MESES,
-    
-    min(mes) ==
-      data_inicio_acumulado,
-    
-    max(mes) ==
-      data_fim_mensal
-  ) |>
-  arrange(mes, .by_group = TRUE) |>
+    n_distinct(mes) == JANELA_ACUMULADA_MESES,
+
+    min(mes) == data_inicio_acumulado,
+
+    max(mes) == data_fim_mensal
+  ) %>%
+  arrange(mes, .by_group = TRUE) %>%
   mutate(
-    retorno_relativo_m =
-      (1 + ret_fundo_m) /
-      (1 + ret_benchmark_m) - 1,
-    
-    retorno_relativo_acumulado =
-      cumprod(
-        1 + retorno_relativo_m
-      ) - 1,
-    
-    destaque_linha =
-      if_else(
-        shortlist,
-        "Shortlist",
-        "Demais fundos"
-      )
-  ) |>
+    retorno_relativo_m = (1 + ret_fundo_m) /
+      (1 + ret_benchmark_m) -
+      1,
+
+    retorno_relativo_acumulado = cumprod(
+      1 + retorno_relativo_m
+    ) -
+      1,
+
+    destaque_linha = if_else(
+      shortlist,
+      "Shortlist",
+      "Demais fundos"
+    )
+  ) %>%
   ungroup()
 
-rotulos_retorno_acumulado <- base_retorno_acumulado |>
+rotulos_retorno_acumulado = base_retorno_acumulado %>%
   group_by(
     nome_plot,
     classificacao,
     destaque_linha
-  ) |>
+  ) %>%
   slice_max(
     mes,
     n = 1,
     with_ties = FALSE
-  ) |>
+  ) %>%
   ungroup()
 
-cores_linhas_acumulado <- c(
+cores_linhas_acumulado = c(
   "Shortlist" = "#1F77B4",
   "Demais fundos" = "#B7B7B7"
 )
 
-grafico_retorno_acumulado <- ggplot(
+grafico_retorno_acumulado = ggplot(
   base_retorno_acumulado,
   aes(
     x = mes,
@@ -372,7 +348,7 @@ grafico_retorno_acumulado <- ggplot(
     show.legend = FALSE
   ) +
   facet_wrap(
-    ~ classificacao,
+    ~classificacao,
     ncol = 2,
     scales = "free_y"
   ) +
@@ -401,20 +377,20 @@ grafico_retorno_acumulado <- ggplot(
       "Retorno acumulado relativo ao ",
       benchmark_config$rotulo
     ),
-    
+
     subtitle = paste0(
       "Últimos ",
       JANELA_ACUMULADA_MESES,
       " meses completos | Positivo indica desempenho acima do benchmark"
     ),
-    
+
     x = NULL,
-    
+
     y = paste0(
       "Retorno acumulado relativo ao ",
       benchmark_config$rotulo
     ),
-    
+
     caption = paste(
       "Painéis definidos pelo quartil do score final.",
       "Fundos da shortlist aparecem destacados."
@@ -422,30 +398,27 @@ grafico_retorno_acumulado <- ggplot(
   ) +
   theme_minimal(base_size = 11) +
   theme(
-    panel.grid.minor =
-      element_blank(),
-    
-    plot.title =
-      element_text(face = "bold"),
-    
-    plot.caption =
-      element_text(hjust = 0),
-    
-    strip.text =
-      element_text(face = "bold"),
-    
-    plot.margin =
-      margin(
-        t = 10,
-        r = 150,
-        b = 10,
-        l = 10
-      )
+    panel.grid.minor = element_blank(),
+
+    plot.title = element_text(face = "bold"),
+
+    plot.caption = element_text(hjust = 0),
+
+    strip.text = element_text(face = "bold"),
+
+    plot.margin = margin(
+      t = 10,
+      r = 150,
+      b = 10,
+      l = 10
+    )
   )
 
 print(grafico_retorno_acumulado)
 
-arquivo_grafico_acumulado <- file.path(
+arquivo_grafico_acumulado = file.path(
+  "projects",
+  "criterios-selecao-fundos-cp",
   "output",
   "figures",
   paste0(
@@ -458,36 +431,31 @@ arquivo_grafico_acumulado <- file.path(
 )
 
 ggsave(
-  filename =
-    arquivo_grafico_acumulado,
-  
-  plot =
-    grafico_retorno_acumulado,
-  
-  width =
-    16,
-  
-  height =
-    11,
-  
-  dpi =
-    300
+  filename = arquivo_grafico_acumulado,
+
+  plot = grafico_retorno_acumulado,
+
+  width = 16,
+
+  height = 11,
+
+  dpi = 300
 )
 
 write_excel_csv2(
   base_retorno_acumulado,
-  "data/intermediate/base_retorno_acumulado_vs_ida_36m.csv"
+  "projects/criterios-selecao-fundos-cp/data/intermediate/base_retorno_acumulado_vs_ida_36m.csv"
 )
 
 # ------------------------------------------------------------
 # 8. Workbook XLSX
 # ------------------------------------------------------------
 
-arquivo_xlsx_saida <-
-  "output/reports/analise_high_grade_etapa2_36m.xlsx"
+arquivo_xlsx_saida =
+  "projects/criterios-selecao-fundos-cp/output/reports/analise_high_grade_etapa2_36m.xlsx"
 
 # 8.1. Tabela com todos os fundos e todas as métricas.
-todos_fundos_xlsx <- metricas_todos_fundos |>
+todos_fundos_xlsx = metricas_todos_fundos %>%
   transmute(
     Fundo = nome_plot,
     `Nome oficial` = nome_xlsx,
@@ -496,11 +464,9 @@ todos_fundos_xlsx <- metricas_todos_fundos |>
     `Revisar de-para` = revisar,
     `Série atualizada` = serie_atualizada,
     `Elegível Etapa 2` = elegivel_etapa2,
-    `Motivo inelegibilidade Etapa 2` =
-      motivo_inelegibilidade_etapa2,
+    `Motivo inelegibilidade Etapa 2` = motivo_inelegibilidade_etapa2,
     `Elegível ranking` = elegivel_ranking,
-    `Motivo inelegibilidade ranking` =
-      motivo_inelegibilidade_ranking,
+    `Motivo inelegibilidade ranking` = motivo_inelegibilidade_ranking,
     `Início série diária` = inicio_serie_diaria,
     `Fim série diária` = fim_serie_diaria,
     `Retornos diários` = n_retornos_diarios,
@@ -513,69 +479,40 @@ todos_fundos_xlsx <- metricas_todos_fundos |>
     `Hit rate 6 meses` = hit_rate_6m,
     `Janelas completas de 36 meses` = n_janelas_36m,
     `Hit rate 36 meses` = hit_rate_36m,
-    `Volatilidade do excesso a.a.` =
-      volatilidade_excesso_aa,
+    `Volatilidade do excesso a.a.` = volatilidade_excesso_aa,
     `Pior mês relativo ao CDI` = pior_mes,
-    `Média dos 3 piores meses` =
-      media_tres_piores_meses,
-    `Autocorrelação lag 1` =
-      autocorrelacao_lag1,
-    `Drawdown máximo do excesso` =
-      max_drawdown_excesso,
-    `Meses para recuperar` =
-      meses_para_recuperar,
-    `Correlação média com pares` =
-      correlacao_media_pares,
-    `Correlação mediana com pares` =
-      correlacao_mediana_pares,
-    `Correlação máxima com par` =
-      correlacao_maxima,
-    `Fundo mais correlacionado` =
-      fundo_mais_correlacionado,
-    `Meses em comum com par mais próximo` =
-      meses_em_comum_com_par_mais_proximo,
-    `Benchmark de menor tracking error` =
-      benchmark_menor_tracking_error,
-    `Menor tracking error a.a.` =
-      menor_tracking_error_aa,
-    `Benchmark de maior correlação` =
-      benchmark_maior_correlacao,
-    `Maior correlação com benchmark` =
-      maior_correlacao,
-    `Meses IDA LIQ-DI` =
-      n_meses_ida_liq_di,
-    `Correlação IDA LIQ-DI` =
-      correlacao_ida_liq_di,
-    `Tracking error IDA LIQ-DI a.a.` =
-      tracking_error_aa_ida_liq_di,
-    `Excesso vs. IDA LIQ-DI a.a.` =
-      excesso_benchmark_aa_ida_liq_di,
-    `Hit rate mensal vs. IDA LIQ-DI` =
-      hit_rate_mensal_ida_liq_di,
-    `Meses IDA-DI` =
-      n_meses_ida_di,
-    `Correlação IDA-DI` =
-      correlacao_ida_di,
-    `Tracking error IDA-DI a.a.` =
-      tracking_error_aa_ida_di,
-    `Excesso vs. IDA-DI a.a.` =
-      excesso_benchmark_aa_ida_di,
-    `Hit rate mensal vs. IDA-DI` =
-      hit_rate_mensal_ida_di,
-    `Meses IRF-M 1` =
-      n_meses_irfm_1,
-    `Correlação IRF-M 1` =
-      correlacao_irfm_1,
-    `Tracking error IRF-M 1 a.a.` =
-      tracking_error_aa_irfm_1,
-    `Excesso vs. IRF-M 1 a.a.` =
-      excesso_benchmark_aa_irfm_1,
-    `Hit rate mensal vs. IRF-M 1` =
-      hit_rate_mensal_irfm_1
+    `Média dos 3 piores meses` = media_tres_piores_meses,
+    `Autocorrelação lag 1` = autocorrelacao_lag1,
+    `Drawdown máximo do excesso` = max_drawdown_excesso,
+    `Meses para recuperar` = meses_para_recuperar,
+    `Correlação média com pares` = correlacao_media_pares,
+    `Correlação mediana com pares` = correlacao_mediana_pares,
+    `Correlação máxima com par` = correlacao_maxima,
+    `Fundo mais correlacionado` = fundo_mais_correlacionado,
+    `Meses em comum com par mais próximo` = meses_em_comum_com_par_mais_proximo,
+    `Benchmark de menor tracking error` = benchmark_menor_tracking_error,
+    `Menor tracking error a.a.` = menor_tracking_error_aa,
+    `Benchmark de maior correlação` = benchmark_maior_correlacao,
+    `Maior correlação com benchmark` = maior_correlacao,
+    `Meses IDA LIQ-DI` = n_meses_ida_liq_di,
+    `Correlação IDA LIQ-DI` = correlacao_ida_liq_di,
+    `Tracking error IDA LIQ-DI a.a.` = tracking_error_aa_ida_liq_di,
+    `Excesso vs. IDA LIQ-DI a.a.` = excesso_benchmark_aa_ida_liq_di,
+    `Hit rate mensal vs. IDA LIQ-DI` = hit_rate_mensal_ida_liq_di,
+    `Meses IDA-DI` = n_meses_ida_di,
+    `Correlação IDA-DI` = correlacao_ida_di,
+    `Tracking error IDA-DI a.a.` = tracking_error_aa_ida_di,
+    `Excesso vs. IDA-DI a.a.` = excesso_benchmark_aa_ida_di,
+    `Hit rate mensal vs. IDA-DI` = hit_rate_mensal_ida_di,
+    `Meses IRF-M 1` = n_meses_irfm_1,
+    `Correlação IRF-M 1` = correlacao_irfm_1,
+    `Tracking error IRF-M 1 a.a.` = tracking_error_aa_irfm_1,
+    `Excesso vs. IRF-M 1 a.a.` = excesso_benchmark_aa_irfm_1,
+    `Hit rate mensal vs. IRF-M 1` = hit_rate_mensal_irfm_1
   )
 
 # 8.2. Ranking com nota, quartil e abertura dos blocos.
-ranking_xlsx <- ranking_fundos |>
+ranking_xlsx = ranking_fundos %>%
   transmute(
     Ranking = ranking_geral,
     Fundo = nome_plot,
@@ -604,29 +541,19 @@ ranking_xlsx <- ranking_fundos |>
     `Hit rate 6 meses` = hit_rate_6m,
     `Janelas completas de 36 meses` = n_janelas_36m,
     `Hit rate 36 meses` = hit_rate_36m,
-    `Drawdown máximo do excesso` =
-      max_drawdown_excesso,
-    `Média dos 3 piores meses` =
-      media_tres_piores_meses,
-    `Volatilidade do excesso a.a.` =
-      volatilidade_excesso_aa,
-    `Taxa de administração a.a.` =
-      taxa_adm_aa,
-    `Eficiência do custo` =
-      eficiencia_custo,
-    `Correlação média com pares` =
-      correlacao_media_pares,
-    `Correlação máxima com par` =
-      correlacao_maxima,
-    `Fundo mais correlacionado` =
-      fundo_mais_correlacionado,
-    `Benchmark de menor tracking error` =
-      benchmark_menor_tracking_error,
-    `Menor tracking error a.a.` =
-      menor_tracking_error_aa
+    `Drawdown máximo do excesso` = max_drawdown_excesso,
+    `Média dos 3 piores meses` = media_tres_piores_meses,
+    `Volatilidade do excesso a.a.` = volatilidade_excesso_aa,
+    `Taxa de administração a.a.` = taxa_adm_aa,
+    `Eficiência do custo` = eficiencia_custo,
+    `Correlação média com pares` = correlacao_media_pares,
+    `Correlação máxima com par` = correlacao_maxima,
+    `Fundo mais correlacionado` = fundo_mais_correlacionado,
+    `Benchmark de menor tracking error` = benchmark_menor_tracking_error,
+    `Menor tracking error a.a.` = menor_tracking_error_aa
   )
 
-wb <- createWorkbook(
+wb = createWorkbook(
   creator = "Análise de fundos high grade"
 )
 
@@ -643,7 +570,7 @@ addWorksheet(
 )
 
 # Estilos.
-estilo_titulo <- createStyle(
+estilo_titulo = createStyle(
   fontSize = 14,
   fontColour = "#FFFFFF",
   fgFill = "#1F4E78",
@@ -652,7 +579,7 @@ estilo_titulo <- createStyle(
   valign = "center"
 )
 
-estilo_subtitulo <- createStyle(
+estilo_subtitulo = createStyle(
   fontSize = 10,
   fontColour = "#1F1F1F",
   fgFill = "#D9EAF7",
@@ -662,55 +589,53 @@ estilo_subtitulo <- createStyle(
   wrapText = TRUE
 )
 
-estilo_percentual <- createStyle(
+estilo_percentual = createStyle(
   numFmt = "0.00%"
 )
 
-estilo_numero <- createStyle(
+estilo_numero = createStyle(
   numFmt = "0.00"
 )
 
-estilo_nota <- createStyle(
+estilo_nota = createStyle(
   numFmt = "0.0"
 )
 
-estilo_data <- createStyle(
+estilo_data = createStyle(
   numFmt = "dd/mm/yyyy"
 )
 
-estilo_inteiro <- createStyle(
+estilo_inteiro = createStyle(
   numFmt = "0"
 )
 
-estilo_wrap <- createStyle(
+estilo_wrap = createStyle(
   wrapText = TRUE,
   valign = "top"
 )
 
 # Função para aplicar estilo por nome de coluna.
-aplica_estilo_colunas <- function(
-    wb,
-    aba,
-    dados,
-    linha_cabecalho,
-    colunas,
-    estilo
+aplica_estilo_colunas = function(
+  wb,
+  aba,
+  dados,
+  linha_cabecalho,
+  colunas,
+  estilo
 ) {
-  indices <- which(
+  indices = which(
     names(dados) %in% colunas
   )
-  
+
   if (
     length(indices) > 0 &&
-    nrow(dados) > 0
+      nrow(dados) > 0
   ) {
     addStyle(
       wb,
       sheet = aba,
       style = estilo,
-      rows =
-        (linha_cabecalho + 1):
-        (linha_cabecalho + nrow(dados)),
+      rows = (linha_cabecalho + 1):(linha_cabecalho + nrow(dados)),
       cols = indices,
       gridExpand = TRUE,
       stack = TRUE
@@ -753,7 +678,7 @@ setColWidths(
   widths = c(30, 45, 45)
 )
 
-colunas_texto_todos <- c(
+colunas_texto_todos = c(
   "Motivo inelegibilidade Etapa 2",
   "Motivo inelegibilidade ranking",
   "Fundo mais correlacionado",
@@ -781,7 +706,7 @@ addStyle(
   stack = TRUE
 )
 
-percentuais_todos <- c(
+percentuais_todos = c(
   "Taxa de administração a.a.",
   "Excesso CDI a.a.",
   "Hit rate mensal",
@@ -882,8 +807,7 @@ writeData(
     Risco = "20%",
     Custo = "25%",
     Diferenciação = "10%",
-    `Máx. por cluster` =
-      MAX_FUNDOS_POR_CLUSTER
+    `Máx. por cluster` = MAX_FUNDOS_POR_CLUSTER
   ),
   startRow = 2,
   startCol = 1,
@@ -1015,13 +939,13 @@ aplica_estilo_colunas(
 )
 
 # Escala de cores na nota final.
-col_nota_final <- which(
+col_nota_final = which(
   names(ranking_xlsx) == "Nota final"
 )
 
 if (
   length(col_nota_final) == 1 &&
-  nrow(ranking_xlsx) > 0
+    nrow(ranking_xlsx) > 0
 ) {
   conditionalFormatting(
     wb,
@@ -1047,7 +971,7 @@ saveWorkbook(
 # 9. Bases consolidadas
 # ------------------------------------------------------------
 
-resumo_etapa2 <- metricas_todos_fundos |>
+resumo_etapa2 = metricas_todos_fundos %>%
   arrange(
     desc(elegivel_ranking),
     desc(excesso_cdi_aa)
@@ -1055,12 +979,12 @@ resumo_etapa2 <- metricas_todos_fundos |>
 
 write_excel_csv2(
   resumo_etapa2,
-  "data/intermediate/resumo_etapa2_36m.csv"
+  "projects/criterios-selecao-fundos-cp/data/intermediate/resumo_etapa2_36m.csv"
 )
 
 write_rds(
   resumo_etapa2,
-  "data/intermediate/resumo_etapa2_36m.rds"
+  "projects/criterios-selecao-fundos-cp/data/intermediate/resumo_etapa2_36m.rds"
 )
 
 # ------------------------------------------------------------
