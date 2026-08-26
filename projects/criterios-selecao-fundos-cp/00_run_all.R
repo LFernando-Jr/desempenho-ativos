@@ -24,17 +24,34 @@ dir.create(
   showWarnings = FALSE
 )
 
-etapas = c(
-  "projects/criterios-selecao-fundos-cp/scripts/01_importacao_de_para.R",
-  "projects/criterios-selecao-fundos-cp/scripts/02_retornos_e_elegibilidade.R",
-  "projects/criterios-selecao-fundos-cp/scripts/03_metricas_e_clusters.R",
-  "projects/criterios-selecao-fundos-cp/scripts/04_score_e_shortlist.R",
-  "projects/criterios-selecao-fundos-cp/scripts/05_exportacao.R"
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/01_importacao_de_para.R",
+  encoding = "UTF-8"
 )
 
-for (etapa in etapas) {
-  message("\nExecutando: ", etapa)
-  source(etapa, encoding = "UTF-8")
-}
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/02_retornos_e_elegibilidade.R",
+  encoding = "UTF-8"
+)
+
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/03_metricas_e_correlacoes.R",
+  encoding = "UTF-8"
+)
+
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/04_score_e_aprovacao.R",
+  encoding = "UTF-8"
+)
+
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/05_redundancia_e_priorizacao.R",
+  encoding = "UTF-8"
+)
+
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/06_exportacao.R",
+  encoding = "UTF-8"
+)
 
 message("\nPipeline concluído.")

@@ -1,31 +1,26 @@
 # ETAPA 1 — IMPORTAÇÃO E DE-PARA
-# Execute preferencialmente por 00_run_all.R.
 
-# ============================================================
-# FUNDOS HIGH GRADE — ETAPA 1
-# Importação, de-para validado, retornos, excessos,
-# nomes limpos e visualizações iniciais.
-# ============================================================
-
-library(tidyverse)
-library(readxl)
-library(lubridate)
-library(janitor)
-library(stringi)
-library(scales)
-library(ggrepel)
+# Limpa os objetos da sessão para evitar dependências de execuções anteriores.
+rm(list = ls())
 
 # ------------------------------------------------------------
 # 0. Caminhos
 # ------------------------------------------------------------
 
-arquivo_xlsx = "projects/criterios-selecao-fundos-cp/data/input/analise_quantitativa_fundos_high_grade.xlsx"
-arquivo_fundos = "projects/criterios-selecao-fundos-cp/data/input/funds_hist.csv"
-arquivo_benchs = "projects/criterios-selecao-fundos-cp/data/input/benchs_hist.csv"
+# Caminhos dos insumos e das saídas desta etapa.
+path_xlsx = "projects/criterios-selecao-fundos-cp/data/input/analise_quantitativa_fundos_high_grade.xlsx"
+path_fundos = "projects/criterios-selecao-fundos-cp/data/input/funds_hist.csv"
+path_benchs = "projects/criterios-selecao-fundos-cp/data/input/benchs_hist.csv"
+path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
+path_de_para = "projects/criterios-selecao-fundos-cp/data/config/de_para_fundos_revisao.csv"
 
-# Janela estrutural padrão da análise.
-JANELA_PADRAO_MESES = 36L
+dir.create(
+  path = path_intermediate,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
+# Define a leitura dos arquivos exportados pela Quantum.
 locale_quantum = locale(
   decimal_mark = ",",
   grouping_mark = ".",
@@ -37,7 +32,7 @@ locale_quantum = locale(
 # ------------------------------------------------------------
 
 fundos_raw = read_delim(
-  arquivo_fundos,
+  file = path_fundos,
   delim = ";",
   locale = locale_quantum,
   show_col_types = FALSE,
@@ -57,7 +52,7 @@ fundos_raw = read_delim(
   arrange(nome_quantum, data)
 
 benchs_raw = read_delim(
-  arquivo_benchs,
+  file = path_benchs,
   delim = ";",
   locale = locale_quantum,
   show_col_types = FALSE,
@@ -82,8 +77,8 @@ benchs_raw = read_delim(
   ) %>%
   arrange(benchmark, data)
 
-taxas_xlsx = read_excel(
-  arquivo_xlsx,
+cadastro_fundos = read_excel(
+  path = path_xlsx,
   sheet = "Base Tratada"
 ) %>%
   clean_names() %>%
@@ -93,24 +88,28 @@ taxas_xlsx = read_excel(
   ) %>%
   filter(!is.na(nome_xlsx))
 
-cat("Fundos no histórico:", n_distinct(fundos_raw$nome_quantum), "\n")
-cat("Fundos no XLSX:", n_distinct(taxas_xlsx$nome_xlsx), "\n")
-cat("Benchmarks:", paste(unique(benchs_raw$benchmark), collapse = ", "), "\n")
+message("[01] Fundos no histórico: ", n_distinct(fundos_raw$nome_quantum))
+message("[01] Fundos no cadastro: ", n_distinct(cadastro_fundos$nome_xlsx))
+message("[01] Benchmarks: ", paste(unique(benchs_raw$benchmark), collapse = ", "))
 
 # Travas contra duplicações na matéria-prima.
 if (anyDuplicated(fundos_raw[c("nome_quantum", "data")]) > 0) {
   stop("Há mais de uma cota para o mesmo fundo e data em funds_hist.csv.")
 }
 
+message("[01] Cotas sem duplicatas por fundo e data.")
+
 if (anyDuplicated(benchs_raw[c("benchmark", "data")]) > 0) {
   stop("Há mais de um nível para o mesmo benchmark e data em benchs_hist.csv.")
 }
+
+message("[01] Benchmarks sem duplicatas por série e data.")
 
 # ------------------------------------------------------------
 # 2. Funções para nomes
 # ------------------------------------------------------------
 
-# 2.1. Normalização usada somente para sugerir o de-para.
+# Termos removidos apenas para comparar os nomes do cadastro com os da Quantum.
 termos_genericos = c(
   "RESP",
   "LIMITADA",
@@ -154,6 +153,7 @@ termos_genericos = c(
   "E"
 )
 
+# Normaliza os nomes para sugerir o de-para, sem alterar os nomes exibidos.
 normaliza_nome = function(x) {
   x %>%
     stri_trans_general("Latin-ASCII") %>%
@@ -166,7 +166,7 @@ normaliza_nome = function(x) {
     )
 }
 
-# 2.2. Limpeza usada somente para exibição nos gráficos.
+# Termos removidos somente dos nomes exibidos nos gráficos.
 # Preserva marca, estratégia, Advisory, Plus, High Grade,
 # Yield, Feeder, números e outros termos distintivos.
 termos_exibicao = c(
@@ -207,6 +207,7 @@ termos_exibicao = c(
   "IS"
 )
 
+# Simplifica os nomes de exibição sem eliminar termos distintivos dos produtos.
 limpa_nome_exibicao = function(x) {
   x_limpo = x %>%
     str_replace_all("[()/,;_-]+", " ") %>%
@@ -233,7 +234,7 @@ limpa_nome_exibicao = function(x) {
 # A similaridade serve apenas para sugerir correspondências.
 # Novus e JGP são exceções validadas manualmente.
 
-nomes_xlsx = taxas_xlsx %>%
+nomes_xlsx = cadastro_fundos %>%
   mutate(chave_xlsx = normaliza_nome(nome_xlsx))
 
 nomes_quantum = fundos_raw %>%
@@ -399,6 +400,8 @@ if (nrow(duplicados_de_para) > 0) {
   )
 }
 
+message("[01] De-para sem duplicidade de fundos da Quantum.")
+
 cat(
   "Pares que merecem revisão manual:",
   sum(de_para$revisar),
@@ -428,14 +431,33 @@ print(
 cat("\nFundos do XLSX sem correspondência:\n")
 
 print(
-  taxas_xlsx %>%
+  cadastro_fundos %>%
     anti_join(de_para, by = "nome_xlsx")
 )
 
 write_excel_csv2(
-  de_para,
-  "projects/criterios-selecao-fundos-cp/data/config/de_para_fundos_revisao.csv"
+  x = de_para,
+  file = path_de_para
 )
 
-# ------------------------------------------------------------
-# 4. Benchmarks em formato largo
+write_rds(
+  x = fundos_raw,
+  file = file.path(path_intermediate, "fundos_raw.rds")
+)
+
+write_rds(
+  x = benchs_raw,
+  file = file.path(path_intermediate, "benchs_raw.rds")
+)
+
+write_rds(
+  x = cadastro_fundos,
+  file = file.path(path_intermediate, "cadastro_fundos.rds")
+)
+
+write_rds(
+  x = de_para,
+  file = file.path(path_intermediate, "de_para_fundos.rds")
+)
+
+message("[01] Importação e de-para concluídos.")
