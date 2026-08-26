@@ -1,6 +1,41 @@
 # ETAPA 2 — RETORNOS E ELEGIBILIDADE
-# Execute preferencialmente por 00_run_all.R.
 
+# Limpa os objetos da sessão para evitar dependências de execuções anteriores.
+rm(list = ls())
+
+# ------------------------------------------------------------
+# Setup
+# ------------------------------------------------------------
+
+# Caminhos dos insumos e das saídas desta etapa.
+path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
+path_fundos_raw = file.path(path_intermediate, "fundos_raw.rds")
+path_benchs_raw = file.path(path_intermediate, "benchs_raw.rds")
+path_de_para = file.path(path_intermediate, "de_para_fundos.rds")
+
+# Janela comum utilizada nas métricas e no score.
+JANELA_SCORE_MESES = 36L
+
+# Quantidade mínima de observações para considerar um mês completo.
+MIN_OBS_MES = 15L
+
+paths_necessarios = c(path_fundos_raw, path_benchs_raw, path_de_para)
+paths_ausentes = paths_necessarios[!file.exists(paths_necessarios)]
+
+if (length(paths_ausentes) > 0) {
+  stop(
+    "Arquivos ausentes na Etapa 2: ",
+    paste(paths_ausentes, collapse = ", "),
+    ". Execute primeiro a Etapa 1."
+  )
+}
+
+fundos_raw = read_rds(file = path_fundos_raw)
+benchs_raw = read_rds(file = path_benchs_raw)
+de_para = read_rds(file = path_de_para)
+
+# ------------------------------------------------------------
+# Retornos
 # ------------------------------------------------------------
 
 benchs_wide = benchs_raw %>%
@@ -9,22 +44,16 @@ benchs_wide = benchs_raw %>%
     values_from = indice
   ) %>%
   arrange(data) %>%
-  mutate(
-    du_id = row_number()
-  )
+  mutate(du_id = row_number())
 
 benchs_anterior = benchs_wide %>%
   rename(data_anterior = data) %>%
   rename_with(
-    ~ paste0(.x, "_anterior"),
-    -data_anterior
+    .fn = ~ paste0(.x, "_anterior"),
+    .cols = -data_anterior
   )
 
-# ------------------------------------------------------------
-# 5. Retornos e excessos
-# ------------------------------------------------------------
-
-fundos_retornos = fundos_raw %>%
+fundos_retornos_historico = fundos_raw %>%
   left_join(
     de_para %>%
       select(
@@ -46,8 +75,6 @@ fundos_retornos = fundos_raw %>%
   mutate(
     data_anterior = lag(data),
     cota_anterior = lag(cota),
-
-    # Retorno observado na cota.
     ret_liq = cota / cota_anterior - 1
   ) %>%
   ungroup() %>%
@@ -62,100 +89,92 @@ fundos_retornos = fundos_raw %>%
     relationship = "many-to-one"
   ) %>%
   mutate(
-    # Dias úteis transcorridos entre as duas cotas.
     n_du = du_id - du_id_anterior,
-
-    # Fator da taxa de administração no intervalo.
-    fator_taxa_intervalo = (1 + taxa_adm_aa)^(n_du / 252),
-
-    # Retorno aproximado antes da taxa de administração.
-    # Recompõe apenas a taxa informada no XLSX.
-    ret_pre_taxa_adm_aprox = (1 + ret_liq) *
-      fator_taxa_intervalo -
-      1,
-
-    # Retornos dos benchmarks no mesmo intervalo.
     ret_cdi = cdi / cdi_anterior - 1,
-
     ret_ida_di = ida_di / ida_di_anterior - 1,
-
     ret_ida_liq_di = ida_liq_di / ida_liq_di_anterior - 1,
-
     ret_irfm_1 = irfm_1 / irfm_1_anterior - 1,
-
-    # Excessos geométricos.
-    excesso_cdi_liq = (1 + ret_liq) /
-      (1 + ret_cdi) -
-      1,
-
-    excesso_cdi_pre_taxa = (1 + ret_pre_taxa_adm_aprox) /
-      (1 + ret_cdi) -
-      1,
-
-    excesso_ida_di_liq = (1 + ret_liq) /
-      (1 + ret_ida_di) -
-      1,
-
+    excesso_cdi_liq = (1 + ret_liq) / (1 + ret_cdi) - 1,
+    excesso_ida_di_liq = (1 + ret_liq) / (1 + ret_ida_di) - 1,
     excesso_ida_liq_di_liq = (1 + ret_liq) /
-      (1 + ret_ida_liq_di) -
-      1,
-
-    excesso_irfm_1_liq = (1 + ret_liq) /
-      (1 + ret_irfm_1) -
-      1
+      (1 + ret_ida_liq_di) - 1,
+    excesso_irfm_1_liq = (1 + ret_liq) / (1 + ret_irfm_1) - 1
   ) %>%
   filter(!is.na(ret_liq))
 
 # ------------------------------------------------------------
-# 6. Checagens
+# Checks
 # ------------------------------------------------------------
 
+# Confere se cada série perdeu somente a primeira observação ao calcular retornos.
 fundos_mapeados = fundos_raw %>%
-  semi_join(
-    de_para,
-    by = "nome_quantum"
-  )
+  semi_join(de_para, by = "nome_quantum")
 
-observacoes_esperadas =
-  nrow(fundos_mapeados) -
+observacoes_esperadas = nrow(fundos_mapeados) -
   n_distinct(fundos_mapeados$nome_quantum)
 
-checagem = fundos_retornos %>%
-  summarise(
-    fundos = n_distinct(nome_quantum),
-
-    observacoes = n(),
-
-    observacoes_esperadas = observacoes_esperadas,
-
-    sem_taxa = sum(is.na(taxa_adm_aa)),
-
-    sem_cdi = sum(is.na(ret_cdi)),
-
-    intervalos_nao_diarios = sum(n_du != 1, na.rm = TRUE),
-
-    maior_intervalo_du = max(n_du, na.rm = TRUE)
+if (nrow(fundos_retornos_historico) != observacoes_esperadas) {
+  stop(
+    "A base de retornos contém ",
+    nrow(fundos_retornos_historico),
+    " observações; eram esperadas ",
+    observacoes_esperadas,
+    "."
   )
+}
 
-print(checagem)
+message("[02] Quantidade de retornos reconciliada com o histórico de cotas.")
 
-duplicacoes_finais = fundos_retornos %>%
-  count(nome_quantum, data) %>%
+# Identifica fundos sem taxa antes da formação do score.
+fundos_sem_taxa = fundos_retornos_historico %>%
+  filter(is.na(taxa_adm_aa)) %>%
+  distinct(nome_plot)
+
+if (nrow(fundos_sem_taxa) > 0) {
+  warning("Há ", nrow(fundos_sem_taxa), " fundo(s) sem taxa de administração.")
+} else {
+  message("[02] Todos os fundos mapeados possuem taxa de administração.")
+}
+
+# Confere a disponibilidade do CDI para todos os retornos utilizados.
+observacoes_sem_cdi = sum(is.na(fundos_retornos_historico$ret_cdi))
+
+if (observacoes_sem_cdi > 0) {
+  warning("Há ", observacoes_sem_cdi, " retorno(s) sem CDI correspondente.")
+} else {
+  message("[02] Todos os retornos possuem CDI correspondente.")
+}
+
+# Garante uma única observação por fundo e data.
+duplicacoes_finais = fundos_retornos_historico %>%
+  count(nome_quantum, data, name = "n") %>%
   filter(n > 1)
 
 if (nrow(duplicacoes_finais) > 0) {
   print(duplicacoes_finais)
-
-  stop(
-    "A base final contém mais de uma observação ",
-    "por fundo e data."
-  )
+  stop("A base de retornos contém duplicatas por fundo e data.")
 }
 
-data_maxima = max(
-  fundos_raw$data,
-  na.rm = TRUE
-)
+message("[02] Base de retornos sem duplicatas por fundo e data.")
+
+# Mostra intervalos que atravessam mais de um dia útil da base de benchmarks.
+intervalos_nao_diarios = fundos_retornos_historico %>%
+  filter(!is.na(n_du), n_du != 1)
+
+if (nrow(intervalos_nao_diarios) > 0) {
+  warning(
+    "Há ",
+    nrow(intervalos_nao_diarios),
+    " intervalo(s) com mais de um dia útil entre cotas; maior intervalo: ",
+    max(intervalos_nao_diarios$n_du, na.rm = TRUE),
+    "."
+  )
+} else {
+  message("[02] Todos os retornos respeitam intervalos diários na base de benchmarks.")
+}
+
+# Lista séries que terminam antes da data máxima disponível.
+data_maxima = max(fundos_raw$data, na.rm = TRUE)
 
 fundos_defasados = fundos_raw %>%
   group_by(nome_quantum) %>%
@@ -165,36 +184,59 @@ fundos_defasados = fundos_raw %>%
   ) %>%
   filter(ultima_data < data_maxima)
 
-cat("\nFundos cuja série termina antes da data máxima:\n")
-print(fundos_defasados)
+if (nrow(fundos_defasados) > 0) {
+  warning("Há ", nrow(fundos_defasados), " série(s) defasada(s).")
+  print(fundos_defasados)
+} else {
+  message("[02] Todas as séries chegam à data máxima da base.")
+}
 
 # ------------------------------------------------------------
-# 7. Saídas da base
+# Janela comum de 36 meses
 # ------------------------------------------------------------
-# ------------------------------------------------------------
-# 7. Elegibilidade: 36 meses completos
-# ------------------------------------------------------------
-# A partir deste ponto, a análise exclui fundos que não:
-# - tenham histórico praticamente integral de 36 meses;
-# - cheguem à data final comum da base;
-# - possuam quantidade mínima de observações na janela;
-# - estejam livres de pendência no de-para.
 
-data_fim = max(
-  fundos_retornos$data[
-    !is.na(fundos_retornos$ret_cdi)
-  ],
+data_fim_disponivel = max(
+  fundos_retornos_historico$data[!is.na(fundos_retornos_historico$ret_cdi)],
   na.rm = TRUE
 )
 
-data_inicio_padrao = data_fim %m-%
-  months(JANELA_PADRAO_MESES)
+mes_fim_disponivel = floor_date(
+  x = data_fim_disponivel,
+  unit = "month"
+)
 
-fundos_elegiveis_36m = fundos_retornos %>%
-  filter(
-    data > data_inicio_padrao,
-    data <= data_fim
+mes_fim_score = if (day(data_fim_disponivel) >= 28) {
+  mes_fim_disponivel
+} else {
+  mes_fim_disponivel %m-% months(1)
+}
+
+mes_inicio_score = mes_fim_score %m-% months(JANELA_SCORE_MESES - 1L)
+data_fim_score = ceiling_date(mes_fim_score, unit = "month") - days(1)
+
+cobertura_mensal = fundos_retornos_historico %>%
+  mutate(mes = floor_date(data, unit = "month")) %>%
+  filter(mes >= mes_inicio_score, mes <= mes_fim_score) %>%
+  group_by(
+    nome_xlsx,
+    nome_curto,
+    nome_plot,
+    nome_quantum,
+    taxa_adm_aa,
+    revisar,
+    mes
   ) %>%
+  summarise(
+    primeira_data = min(data),
+    ultima_data = max(data),
+    n_obs = n(),
+    mes_completo = day(primeira_data) <= 7 &
+      day(ultima_data) >= 24 &
+      n_obs >= MIN_OBS_MES,
+    .groups = "drop"
+  )
+
+universo_elegibilidade = cobertura_mensal %>%
   group_by(
     nome_xlsx,
     nome_curto,
@@ -203,76 +245,34 @@ fundos_elegiveis_36m = fundos_retornos %>%
     taxa_adm_aa
   ) %>%
   summarise(
-    primeira_data_janela = min(data),
-
-    ultima_data_janela = max(data),
-
-    n_obs_janela = n(),
-
     revisar = any(revisar),
-
+    primeiro_mes = min(mes),
+    ultimo_mes = max(mes),
+    n_meses = n_distinct(mes),
+    n_meses_completos = sum(mes_completo),
     .groups = "drop"
   ) %>%
   mutate(
-    cobertura_36m = !revisar &
-      primeira_data_janela <= data_inicio_padrao + days(10) &
-      ultima_data_janela == data_fim &
-      n_obs_janela >= JANELA_PADRAO_MESES * 18
-  )
-
-fundos_excluidos_36m = fundos_elegiveis_36m %>%
-  filter(!cobertura_36m) %>%
-  mutate(
-    motivo_exclusao = case_when(
-      revisar ~
-        "De-para pendente de revisão",
-
-      ultima_data_janela < data_fim ~
-        "Série não chega à data final comum",
-
-      primeira_data_janela > data_inicio_padrao + days(10) ~
-        "Histórico inferior a 36 meses",
-
-      n_obs_janela < JANELA_PADRAO_MESES * 18 ~
-        "Quantidade insuficiente de observações",
-
-      TRUE ~
-        "Cobertura insuficiente da janela"
+    data_inicio_score = mes_inicio_score,
+    data_fim_score = data_fim_score,
+    elegivel_score_36m = !revisar &
+      primeiro_mes == mes_inicio_score &
+      ultimo_mes == mes_fim_score &
+      n_meses == JANELA_SCORE_MESES &
+      n_meses_completos == JANELA_SCORE_MESES,
+    motivo_inelegibilidade = case_when(
+      revisar ~ "De-para pendente de revisão",
+      primeiro_mes > mes_inicio_score ~ "Histórico inferior a 36 meses",
+      ultimo_mes < mes_fim_score ~ "Série não chega ao mês final comum",
+      n_meses < JANELA_SCORE_MESES ~ "Meses ausentes na janela comum",
+      n_meses_completos < JANELA_SCORE_MESES ~ "Há meses incompletos na janela comum",
+      TRUE ~ NA_character_
     )
   )
 
-fundos_elegiveis_36m = fundos_elegiveis_36m %>%
-  filter(cobertura_36m)
-
-cat(
-  "\nFundos elegíveis com 36 meses completos:",
-  nrow(fundos_elegiveis_36m),
-  "de",
-  n_distinct(fundos_retornos$nome_quantum),
-  "\n"
-)
-
-cat("\nFundos excluídos por histórico insuficiente:\n")
-print(
-  fundos_excluidos_36m %>%
-    select(
-      nome_plot,
-      primeira_data_janela,
-      ultima_data_janela,
-      n_obs_janela,
-      motivo_exclusao
-    )
-)
-
-write_excel_csv2(
-  fundos_excluidos_36m,
-  "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_excluidos_janela_36m.csv"
-)
-
-# Exclui do restante da análise os fundos sem 36 meses completos.
-fundos_retornos = fundos_retornos %>%
+fundos_retornos_score = fundos_retornos_historico %>%
   semi_join(
-    fundos_elegiveis_36m,
+    universo_elegibilidade %>% filter(elegivel_score_36m),
     by = c(
       "nome_xlsx",
       "nome_curto",
@@ -280,46 +280,60 @@ fundos_retornos = fundos_retornos %>%
       "nome_quantum",
       "taxa_adm_aa"
     )
-  )
+  ) %>%
+  mutate(
+    mes = floor_date(data, unit = "month"),
+    em_janela_score = mes >= mes_inicio_score & mes <= mes_fim_score
+  ) %>%
+  filter(em_janela_score)
+
+if (n_distinct(fundos_retornos_score$nome_plot) == 0) {
+  stop("Nenhum fundo possui 36 meses completos na janela comum do score.")
+}
+
+message(
+  "[02] Janela do score: ",
+  format(mes_inicio_score, "%m/%Y"),
+  " a ",
+  format(mes_fim_score, "%m/%Y"),
+  "."
+)
+
+message(
+  "[02] Fundos elegíveis: ",
+  n_distinct(fundos_retornos_score$nome_plot),
+  " de ",
+  nrow(universo_elegibilidade),
+  "."
+)
 
 # ------------------------------------------------------------
-# 8. Saídas da base elegível
+# Saídas
 # ------------------------------------------------------------
 
 write_rds(
-  fundos_retornos,
-  "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_retornos_etapa1_36m.rds"
+  x = fundos_retornos_historico,
+  file = file.path(path_intermediate, "fundos_retornos_historico.rds")
+)
+
+write_rds(
+  x = fundos_retornos_score,
+  file = file.path(path_intermediate, "fundos_retornos_score_36m.rds")
+)
+
+write_rds(
+  x = universo_elegibilidade,
+  file = file.path(path_intermediate, "universo_elegibilidade_36m.rds")
 )
 
 write_excel_csv2(
-  fundos_retornos %>%
-    select(
-      nome_xlsx,
-      nome_curto,
-      nome_plot,
-      nome_quantum,
-      criterio_match,
-      similaridade,
-      revisar,
-      data,
-      cota,
-      taxa_adm_aa,
-      n_du,
-      ret_liq,
-      ret_pre_taxa_adm_aprox,
-      ret_cdi,
-      excesso_cdi_liq,
-      excesso_cdi_pre_taxa,
-      ret_ida_di,
-      excesso_ida_di_liq,
-      ret_ida_liq_di,
-      excesso_ida_liq_di_liq,
-      ret_irfm_1,
-      excesso_irfm_1_liq
-  ),
-  "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_retornos_etapa1_36m.csv"
+  x = universo_elegibilidade,
+  file = file.path(path_intermediate, "universo_elegibilidade_36m.csv")
 )
 
-# ------------------------------------------------------------
-# 9. Visualização 1:
-#    janelas de excesso anualizado sobre o CDI
+write_excel_csv2(
+  x = universo_elegibilidade %>% filter(!elegivel_score_36m),
+  file = file.path(path_intermediate, "fundos_excluidos_janela_36m.csv")
+)
+
+message("[02] Retornos, histórico e elegibilidade concluídos.")
