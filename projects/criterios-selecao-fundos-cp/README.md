@@ -27,7 +27,7 @@ O runner cria os diretórios necessários e executa seis etapas independentes:
 1. importação dos históricos e validação do de-para;
 2. retornos, histórico completo e elegibilidade na janela comum de 36 meses;
 3. métricas individuais e correlações;
-4. score de qualidade e preparação da aprovação quantitativa;
+4. score de qualidade e aprovação quantitativa;
 5. redundância, comparação com a carteira atual e diagnósticos de clusters;
 6. gráficos e planilha final.
 
@@ -44,10 +44,19 @@ Os pacotes são carregados pelo `.Rprofile`; os scripts não repetem chamadas de
 - métricas são convertidas em notas de 0 a 100 por z-score robusto e função logística;
 - pesos: retorno 30%, consistência 25%, risco 20% e custo 25%;
 - correlação, redundância e clusters não entram no score de qualidade;
-- quartis são descritivos e a aprovação quantitativa ainda será calibrada;
+- aprovação com margem exige nota final de pelo menos 58, nenhum red flag
+  absoluto e nenhum pilar abaixo de 30;
+- a zona cinzenta abrange notas de 52 a abaixo de 58 e também fundos com nota
+  superior que apresentem algum pilar abaixo de 30;
+- quartis permanecem apenas descritivos;
 - não existe limite automático de fundos por cluster nem tamanho fixo de shortlist.
 
 Para comparar candidatos com posições existentes, preencha `data/config/fundos_carteira_atual.csv` usando exatamente os nomes da coluna `nome_plot`.
+
+Para registrar a diligência, preencha `data/config/avaliacao_qualitativa.csv`.
+Os status aceitos são: `Aprovado qualitativamente`,
+`Aprovado com limite ou condição`, `Pendente de informações` e
+`Reprovado qualitativamente`.
 
 Para corrigir correspondências de nomes, preencha
 `data/config/de_para_fundos_revisao.csv` com as colunas `nome_xlsx` e
