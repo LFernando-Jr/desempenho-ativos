@@ -71,6 +71,9 @@ calendario_mensal_cdi = calendario_cdi %>%
     ultima_data_cdi = max(data),
     n_datas_cdi = n(),
     .groups = "drop"
+  ) %>%
+  mutate(
+    mes_encerrado = mes < max(mes)
   )
 
 fundos_retornos_historico = fundos_raw %>%
@@ -215,10 +218,8 @@ if (nrow(fundos_defasados) > 0) {
 # Janela comum de 36 meses
 # ------------------------------------------------------------
 
-mes_maximo_cdi = max(calendario_mensal_cdi$mes)
-
 meses_cdi_fechados = calendario_mensal_cdi %>%
-  filter(mes < mes_maximo_cdi)
+  filter(mes_encerrado)
 
 if (nrow(meses_cdi_fechados) < JANELA_SCORE_MESES) {
   stop(

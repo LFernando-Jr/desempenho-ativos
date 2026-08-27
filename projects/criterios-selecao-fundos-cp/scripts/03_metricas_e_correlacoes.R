@@ -98,7 +98,8 @@ agrega_mensal = function(base_retornos) {
         data_inicio_intervalo == data_inicio_intervalo_esperada &
           ultima_data == ultima_data_cdi &
           n_cdi_validos == n_obs &
-          n_intervalos_invalidos == 0,
+          n_intervalos_invalidos == 0 &
+          mes_encerrado,
         FALSE
       ),
       excesso_cdi_m = (1 + ret_fundo_m) / (1 + ret_cdi_m) - 1
