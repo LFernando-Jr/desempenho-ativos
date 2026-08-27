@@ -73,7 +73,7 @@ corrige_relacionamentos_xlsx = function(path) {
     no.. = TRUE
   )
 
-  zipr = getExportedValue(x = "zip", name = "zipr")
+  zipr = getExportedValue(ns = "zip", name = "zipr")
 
   zipr(
     zipfile = path_xlsx_temp,
