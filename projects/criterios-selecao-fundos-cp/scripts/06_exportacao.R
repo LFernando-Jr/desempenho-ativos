@@ -188,7 +188,10 @@ pares_redundancia = read_csv2(
 )
 
 sensibilidade_limiares = read_csv2(
-  file = file.path(path_intermediate, "sensibilidade_limiares_redundancia_36m.csv"),
+  file = file.path(
+    path_intermediate,
+    "sensibilidade_limiares_redundancia_36m.csv"
+  ),
   show_col_types = FALSE
 )
 
@@ -267,7 +270,10 @@ grafico_correlacao = ggplot(
   )
 
 ggsave(
-  filename = file.path(path_figures, "heatmap_correlacao_excessos_mensais_36m.png"),
+  filename = file.path(
+    path_figures,
+    "heatmap_correlacao_excessos_mensais_36m.png"
+  ),
   plot = grafico_correlacao,
   width = 15,
   height = 13,
@@ -275,7 +281,10 @@ ggsave(
 )
 
 png(
-  filename = file.path(path_figures, "dendrograma_fundos_excessos_mensais_36m.png"),
+  filename = file.path(
+    path_figures,
+    "dendrograma_fundos_excessos_mensais_36m.png"
+  ),
   width = 2600,
   height = 1500,
   res = 200
@@ -478,7 +487,9 @@ grafico_historico = ggplot(
   geom_line(linewidth = 0.55, alpha = 0.60) +
   facet_wrap(facets = vars(quartil), ncol = 2, scales = "free_y") +
   scale_color_manual(values = cores_quartis) +
-  scale_y_continuous(labels = percent_format(accuracy = 0.1, decimal.mark = ",")) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 0.1, decimal.mark = ",")
+  ) +
   labs(
     title = "Histórico completo do excesso acumulado sobre o CDI",
     subtitle = "O histórico completo é diagnóstico; somente os 36 meses comuns entram no score",
@@ -493,7 +504,10 @@ grafico_historico = ggplot(
   )
 
 ggsave(
-  filename = file.path(path_figures, "grafico_historico_completo_excesso_cdi.png"),
+  filename = file.path(
+    path_figures,
+    "grafico_historico_completo_excesso_cdi.png"
+  ),
   plot = grafico_historico,
   width = 15,
   height = 10,
@@ -647,7 +661,8 @@ iwalk(
         str_detect(
           nomes_colunas,
           "(^ret_|^excesso_|hit_rate|volatilidade|drawdown|cauda|taxa_adm|tracking_error)"
-        ) & nomes_colunas != "razao_excesso_taxa"
+        ) &
+          nomes_colunas != "razao_excesso_taxa"
       )
       colunas_decimais = which(
         str_detect(
@@ -716,8 +731,8 @@ saveWorkbook(
   overwrite = TRUE
 )
 
-corrige_relacionamentos_xlsx(path = path_relatorio)
+# corrige_relacionamentos_xlsx(path = path_relatorio)
 
-message("[06] Workbook validado sem relações internas pendentes.")
+# message("[06] Workbook validado sem relações internas pendentes.")
 message("[06] Gráficos e workbook final exportados.")
 message("[06] Relatório: ", path_relatorio)
