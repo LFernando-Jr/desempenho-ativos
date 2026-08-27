@@ -12,7 +12,11 @@ path_xlsx = "projects/criterios-selecao-fundos-cp/data/input/analise_quantitativ
 path_fundos = "projects/criterios-selecao-fundos-cp/data/input/funds_hist.csv"
 path_benchs = "projects/criterios-selecao-fundos-cp/data/input/benchs_hist.csv"
 path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
-path_de_para = "projects/criterios-selecao-fundos-cp/data/config/de_para_fundos_revisao.csv"
+path_de_para_manual = "projects/criterios-selecao-fundos-cp/data/config/de_para_fundos_revisao.csv"
+path_de_para_sugerido = file.path(
+  path_intermediate,
+  "de_para_fundos_sugerido.csv"
+)
 
 dir.create(
   path = path_intermediate,
@@ -376,6 +380,110 @@ de_para = de_para %>%
     revisar
   )
 
+# Aplica somente as correspondências explicitamente preenchidas na configuração.
+# O arquivo manual nunca é sobrescrito pelo pipeline.
+if (file.exists(path_de_para_manual)) {
+  de_para_manual = read_csv2(
+    file = path_de_para_manual,
+    show_col_types = FALSE
+  ) %>%
+    clean_names()
+
+  colunas_manuais_necessarias = c("nome_xlsx", "nome_quantum")
+  colunas_manuais_ausentes = setdiff(
+    colunas_manuais_necessarias,
+    names(de_para_manual)
+  )
+
+  if (length(colunas_manuais_ausentes) > 0) {
+    stop(
+      "O de-para manual não contém as colunas: ",
+      paste(colunas_manuais_ausentes, collapse = ", "),
+      "."
+    )
+  }
+
+  de_para_manual = de_para_manual %>%
+    transmute(
+      nome_xlsx,
+      nome_quantum_manual = nome_quantum
+    ) %>%
+    filter(
+      !is.na(nome_xlsx),
+      nome_xlsx != "",
+      !is.na(nome_quantum_manual),
+      nome_quantum_manual != ""
+    )
+
+  if (anyDuplicated(de_para_manual$nome_xlsx) > 0) {
+    stop("O de-para manual contém mais de uma linha para o mesmo nome_xlsx.")
+  }
+
+  nomes_xlsx_invalidos = setdiff(
+    de_para_manual$nome_xlsx,
+    cadastro_fundos$nome_xlsx
+  )
+
+  nomes_quantum_invalidos = setdiff(
+    de_para_manual$nome_quantum_manual,
+    nomes_quantum$nome_quantum
+  )
+
+  if (length(nomes_xlsx_invalidos) > 0) {
+    stop(
+      "O de-para manual contém fundos ausentes do cadastro: ",
+      paste(nomes_xlsx_invalidos, collapse = " | "),
+      "."
+    )
+  }
+
+  if (length(nomes_quantum_invalidos) > 0) {
+    stop(
+      "O de-para manual contém nomes ausentes da Quantum: ",
+      paste(nomes_quantum_invalidos, collapse = " | "),
+      "."
+    )
+  }
+
+  de_para = de_para %>%
+    left_join(
+      de_para_manual,
+      by = "nome_xlsx",
+      relationship = "one-to-one"
+    ) %>%
+    mutate(
+      correspondencia_manual = !is.na(nome_quantum_manual),
+      nome_quantum = coalesce(nome_quantum_manual, nome_quantum),
+      criterio_match = if_else(
+        correspondencia_manual,
+        "Validado no arquivo de configuração",
+        criterio_match
+      ),
+      similaridade = if_else(
+        correspondencia_manual,
+        1,
+        similaridade
+      ),
+      revisar = if_else(
+        correspondencia_manual,
+        FALSE,
+        revisar
+      )
+    ) %>%
+    select(-nome_quantum_manual, -correspondencia_manual)
+
+  message(
+    "[01] Correspondências manuais aplicadas: ",
+    nrow(de_para_manual),
+    "."
+  )
+} else {
+  message(
+    "[01] De-para manual ausente; utilizadas apenas sugestões e exceções ",
+    "codificadas."
+  )
+}
+
 # ------------------------------------------------------------
 # 3.1. Validação do de-para
 # ------------------------------------------------------------
@@ -437,7 +545,7 @@ print(
 
 write_excel_csv2(
   x = de_para,
-  file = path_de_para
+  file = path_de_para_sugerido
 )
 
 write_rds(

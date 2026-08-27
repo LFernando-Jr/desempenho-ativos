@@ -12,14 +12,17 @@ path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
 path_retornos_historico = file.path(path_intermediate, "fundos_retornos_historico.rds")
 path_retornos_score = file.path(path_intermediate, "fundos_retornos_score_36m.rds")
 path_universo = file.path(path_intermediate, "universo_elegibilidade_36m.rds")
+path_calendario_cdi = file.path(path_intermediate, "calendario_mensal_cdi.rds")
 
 # Quantidade esperada de meses na janela comum do score.
 JANELA_SCORE_MESES = 36L
 
-# Quantidade mínima de observações para validar um mês.
-MIN_OBS_MES = 15L
-
-paths_necessarios = c(path_retornos_historico, path_retornos_score, path_universo)
+paths_necessarios = c(
+  path_retornos_historico,
+  path_retornos_score,
+  path_universo,
+  path_calendario_cdi
+)
 paths_ausentes = paths_necessarios[!file.exists(paths_necessarios)]
 
 if (length(paths_ausentes) > 0) {
@@ -33,6 +36,7 @@ if (length(paths_ausentes) > 0) {
 fundos_retornos_historico = read_rds(file = path_retornos_historico)
 fundos_retornos_score = read_rds(file = path_retornos_score)
 universo_elegibilidade = read_rds(file = path_universo)
+calendario_mensal_cdi = read_rds(file = path_calendario_cdi)
 
 # ------------------------------------------------------------
 # Helpers
@@ -52,31 +56,51 @@ agrega_mensal = function(base_retornos) {
     ) %>%
     summarise(
       primeira_data = min(data),
+      data_inicio_intervalo = data_anterior[which.min(data)],
       ultima_data = max(data),
       n_obs = n(),
-      ret_fundo_m = prod(1 + ret_liq, na.rm = TRUE) - 1,
-      ret_cdi_m = prod(1 + ret_cdi, na.rm = TRUE) - 1,
+      n_cdi_validos = sum(is.finite(ret_cdi)),
+      n_intervalos_invalidos = sum(!is.finite(n_du) | n_du < 1),
+      ret_fundo_m = if_else(
+        all(is.finite(ret_liq)),
+        prod(1 + ret_liq) - 1,
+        NA_real_
+      ),
+      ret_cdi_m = if_else(
+        all(is.finite(ret_cdi)),
+        prod(1 + ret_cdi) - 1,
+        NA_real_
+      ),
       ret_ida_di_m = if_else(
-        all(is.na(ret_ida_di)),
-        NA_real_,
-        prod(1 + ret_ida_di, na.rm = TRUE) - 1
+        all(is.finite(ret_ida_di)),
+        prod(1 + ret_ida_di) - 1,
+        NA_real_
       ),
       ret_ida_liq_di_m = if_else(
-        all(is.na(ret_ida_liq_di)),
-        NA_real_,
-        prod(1 + ret_ida_liq_di, na.rm = TRUE) - 1
+        all(is.finite(ret_ida_liq_di)),
+        prod(1 + ret_ida_liq_di) - 1,
+        NA_real_
       ),
       ret_irfm_1_m = if_else(
-        all(is.na(ret_irfm_1)),
-        NA_real_,
-        prod(1 + ret_irfm_1, na.rm = TRUE) - 1
+        all(is.finite(ret_irfm_1)),
+        prod(1 + ret_irfm_1) - 1,
+        NA_real_
       ),
       .groups = "drop"
     ) %>%
+    left_join(
+      calendario_mensal_cdi,
+      by = "mes",
+      relationship = "many-to-one"
+    ) %>%
     mutate(
-      mes_completo = day(primeira_data) <= 7 &
-        day(ultima_data) >= 24 &
-        n_obs >= MIN_OBS_MES,
+      mes_completo = coalesce(
+        data_inicio_intervalo == data_inicio_intervalo_esperada &
+          ultima_data == ultima_data_cdi &
+          n_cdi_validos == n_obs &
+          n_intervalos_invalidos == 0,
+        FALSE
+      ),
       excesso_cdi_m = (1 + ret_fundo_m) / (1 + ret_cdi_m) - 1
     ) %>%
     filter(mes_completo, is.finite(excesso_cdi_m)) %>%
@@ -85,10 +109,20 @@ agrega_mensal = function(base_retornos) {
 
 # Calcula o drawdown máximo do patrimônio relativo ao CDI e sua recuperação.
 calcula_drawdown = function(retornos) {
-  patrimonio_relativo = cumprod(1 + retornos)
+  patrimonio_relativo = c(1, cumprod(1 + retornos))
   pico = cummax(patrimonio_relativo)
   drawdown = patrimonio_relativo / pico - 1
   indice_fundo = which.min(drawdown)
+
+  if (drawdown[indice_fundo] >= -.Machine$double.eps^0.5) {
+    return(
+      tibble(
+        max_drawdown_excesso = 0,
+        meses_para_recuperar = 0L
+      )
+    )
+  }
+
   nivel_pico_anterior = pico[indice_fundo]
   indice_recuperacao = which(
     seq_along(patrimonio_relativo) > indice_fundo &
@@ -235,11 +269,19 @@ metricas_historicas_36m = fundos_mensais_historico %>%
   group_by(nome_xlsx, nome_plot, nome_quantum, taxa_adm_aa) %>%
   arrange(mes, .by_group = TRUE) %>%
   mutate(
-    excesso_36m_historico = slide_dbl(
+    excesso_36m_bruto = slide_dbl(
       .x = excesso_cdi_m,
       .f = ~ prod(1 + .x) - 1,
       .before = JANELA_SCORE_MESES - 1L,
       .complete = TRUE
+    ),
+    mes_inicio_janela_36m = lag(mes, JANELA_SCORE_MESES - 1L),
+    janela_36m_consecutiva = !is.na(mes_inicio_janela_36m) &
+      mes == mes_inicio_janela_36m %m+% months(JANELA_SCORE_MESES - 1L),
+    excesso_36m_historico = if_else(
+      janela_36m_consecutiva,
+      excesso_36m_bruto,
+      NA_real_
     )
   ) %>%
   summarise(
@@ -280,7 +322,14 @@ matriz_cor = cor(
 matriz_obs = crossprod(!is.na(matriz_excessos))
 
 if (anyNA(matriz_cor)) {
-  warning("Há correlações indefinidas na matriz de excessos mensais.")
+  fundos_correlacao_indefinida = colnames(matriz_cor)[
+    colSums(!is.finite(matriz_cor)) > 0
+  ]
+  stop(
+    "Há correlações indefinidas na matriz de excessos mensais. Fundos: ",
+    paste(fundos_correlacao_indefinida, collapse = " | "),
+    "."
+  )
 }
 
 resumo_correlacao = map_dfr(

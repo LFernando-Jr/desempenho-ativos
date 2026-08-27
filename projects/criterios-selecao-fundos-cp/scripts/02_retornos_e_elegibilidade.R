@@ -16,9 +16,6 @@ path_de_para = file.path(path_intermediate, "de_para_fundos.rds")
 # Janela comum utilizada nas métricas e no score.
 JANELA_SCORE_MESES = 36L
 
-# Quantidade mínima de observações para considerar um mês completo.
-MIN_OBS_MES = 15L
-
 paths_necessarios = c(path_fundos_raw, path_benchs_raw, path_de_para)
 paths_ausentes = paths_necessarios[!file.exists(paths_necessarios)]
 
@@ -51,6 +48,29 @@ benchs_anterior = benchs_wide %>%
   rename_with(
     .fn = ~ paste0(.x, "_anterior"),
     .cols = -data_anterior
+  )
+
+# O calendário do CDI define os limites efetivos de cada mês.
+# Um mês só é considerado encerrado quando já existe observação no mês seguinte.
+calendario_cdi = benchs_raw %>%
+  filter(benchmark == "cdi") %>%
+  arrange(data) %>%
+  transmute(
+    data,
+    mes = floor_date(data, unit = "month"),
+    data_anterior_cdi = lag(data),
+    ret_cdi_calendario = indice / lag(indice) - 1
+  ) %>%
+  filter(is.finite(ret_cdi_calendario))
+
+calendario_mensal_cdi = calendario_cdi %>%
+  group_by(mes) %>%
+  summarise(
+    data_inicio_intervalo_esperada = data_anterior_cdi[which.min(data)],
+    primeira_data_cdi = min(data),
+    ultima_data_cdi = max(data),
+    n_datas_cdi = n(),
+    .groups = "drop"
   )
 
 fundos_retornos_historico = fundos_raw %>%
@@ -195,24 +215,33 @@ if (nrow(fundos_defasados) > 0) {
 # Janela comum de 36 meses
 # ------------------------------------------------------------
 
-data_fim_disponivel = max(
-  fundos_retornos_historico$data[!is.na(fundos_retornos_historico$ret_cdi)],
-  na.rm = TRUE
-)
+mes_maximo_cdi = max(calendario_mensal_cdi$mes)
 
-mes_fim_disponivel = floor_date(
-  x = data_fim_disponivel,
-  unit = "month"
-)
+meses_cdi_fechados = calendario_mensal_cdi %>%
+  filter(mes < mes_maximo_cdi)
 
-mes_fim_score = if (day(data_fim_disponivel) >= 28) {
-  mes_fim_disponivel
-} else {
-  mes_fim_disponivel %m-% months(1)
+if (nrow(meses_cdi_fechados) < JANELA_SCORE_MESES) {
+  stop(
+    "O calendário do CDI não contém ",
+    JANELA_SCORE_MESES,
+    " meses encerrados."
+  )
 }
 
+mes_fim_score = max(meses_cdi_fechados$mes)
+
 mes_inicio_score = mes_fim_score %m-% months(JANELA_SCORE_MESES - 1L)
-data_fim_score = ceiling_date(mes_fim_score, unit = "month") - days(1)
+
+calendario_score = meses_cdi_fechados %>%
+  filter(mes >= mes_inicio_score, mes <= mes_fim_score)
+
+if (nrow(calendario_score) != JANELA_SCORE_MESES) {
+  stop("O calendário do CDI possui lacunas na janela comum de 36 meses.")
+}
+
+data_fim_score = calendario_score %>%
+  filter(mes == mes_fim_score) %>%
+  pull(ultima_data_cdi)
 
 cobertura_mensal = fundos_retornos_historico %>%
   mutate(mes = floor_date(data, unit = "month")) %>%
@@ -228,15 +257,29 @@ cobertura_mensal = fundos_retornos_historico %>%
   ) %>%
   summarise(
     primeira_data = min(data),
+    data_inicio_intervalo = data_anterior[which.min(data)],
     ultima_data = max(data),
     n_obs = n(),
-    mes_completo = day(primeira_data) <= 7 &
-      day(ultima_data) >= 24 &
-      n_obs >= MIN_OBS_MES,
+    n_cdi_validos = sum(is.finite(ret_cdi)),
+    n_intervalos_invalidos = sum(!is.finite(n_du) | n_du < 1),
     .groups = "drop"
+  ) %>%
+  left_join(
+    calendario_score,
+    by = "mes",
+    relationship = "many-to-one"
+  ) %>%
+  mutate(
+    mes_completo = coalesce(
+      data_inicio_intervalo == data_inicio_intervalo_esperada &
+        ultima_data == ultima_data_cdi &
+        n_cdi_validos == n_obs &
+        n_intervalos_invalidos == 0,
+      FALSE
+    )
   )
 
-universo_elegibilidade = cobertura_mensal %>%
+resumo_cobertura = cobertura_mensal %>%
   group_by(
     nome_xlsx,
     nome_curto,
@@ -251,17 +294,43 @@ universo_elegibilidade = cobertura_mensal %>%
     n_meses = n_distinct(mes),
     n_meses_completos = sum(mes_completo),
     .groups = "drop"
+  )
+
+universo_elegibilidade = de_para %>%
+  select(
+    nome_xlsx,
+    nome_curto,
+    nome_plot,
+    nome_quantum,
+    taxa_adm_aa,
+    revisar
+  ) %>%
+  left_join(
+    resumo_cobertura,
+    by = c(
+      "nome_xlsx",
+      "nome_curto",
+      "nome_plot",
+      "nome_quantum",
+      "taxa_adm_aa",
+      "revisar"
+    ),
+    relationship = "one-to-one"
   ) %>%
   mutate(
+    n_meses = coalesce(n_meses, 0L),
+    n_meses_completos = coalesce(n_meses_completos, 0L),
     data_inicio_score = mes_inicio_score,
     data_fim_score = data_fim_score,
     elegivel_score_36m = !revisar &
+      !is.na(primeiro_mes) &
       primeiro_mes == mes_inicio_score &
       ultimo_mes == mes_fim_score &
       n_meses == JANELA_SCORE_MESES &
       n_meses_completos == JANELA_SCORE_MESES,
     motivo_inelegibilidade = case_when(
       revisar ~ "De-para pendente de revisão",
+      is.na(primeiro_mes) ~ "Sem observações na janela comum",
       primeiro_mes > mes_inicio_score ~ "Histórico inferior a 36 meses",
       ultimo_mes < mes_fim_score ~ "Série não chega ao mês final comum",
       n_meses < JANELA_SCORE_MESES ~ "Meses ausentes na janela comum",
@@ -286,6 +355,17 @@ fundos_retornos_score = fundos_retornos_historico %>%
     em_janela_score = mes >= mes_inicio_score & mes <= mes_fim_score
   ) %>%
   filter(em_janela_score)
+
+observacoes_score_sem_cdi = fundos_retornos_score %>%
+  filter(!is.finite(ret_cdi))
+
+if (nrow(observacoes_score_sem_cdi) > 0) {
+  print(
+    observacoes_score_sem_cdi %>%
+      select(nome_plot, data, ret_liq, ret_cdi)
+  )
+  stop("A janela do score contém retornos sem CDI válido.")
+}
 
 if (n_distinct(fundos_retornos_score$nome_plot) == 0) {
   stop("Nenhum fundo possui 36 meses completos na janela comum do score.")
@@ -324,6 +404,11 @@ write_rds(
 write_rds(
   x = universo_elegibilidade,
   file = file.path(path_intermediate, "universo_elegibilidade_36m.rds")
+)
+
+write_rds(
+  x = calendario_mensal_cdi,
+  file = file.path(path_intermediate, "calendario_mensal_cdi.rds")
 )
 
 write_excel_csv2(

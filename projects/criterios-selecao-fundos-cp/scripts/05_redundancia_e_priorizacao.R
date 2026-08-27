@@ -123,7 +123,10 @@ calcula_grupos_janela = function(
     method = "pearson"
   )
 
-  matriz_cor_janela[is.na(matriz_cor_janela)] = 0
+  if (anyNA(matriz_cor_janela)) {
+    return(NULL)
+  }
+
   diag(matriz_cor_janela) = 1
 
   arvore = hclust(
@@ -287,7 +290,18 @@ resumo_redundancia = map_dfr(
 # ------------------------------------------------------------
 
 matriz_cor_cluster = matriz_cor_analise
-matriz_cor_cluster[is.na(matriz_cor_cluster)] = 0
+
+if (anyNA(matriz_cor_cluster)) {
+  fundos_correlacao_indefinida = rownames(matriz_cor_cluster)[
+    rowSums(!is.finite(matriz_cor_cluster)) > 0
+  ]
+  stop(
+    "Não é possível formar clusters com correlações indefinidas. Fundos: ",
+    paste(fundos_correlacao_indefinida, collapse = " | "),
+    "."
+  )
+}
+
 diag(matriz_cor_cluster) = 1
 
 distancia_cor = as.dist(1 - matriz_cor_cluster)
@@ -399,6 +413,10 @@ priorizacao_qualitativa = ranking_fundos %>%
     prioridade_analise_qualitativa = case_when(
       !is.na(red_flags_absolutos) ~ NA_integer_,
       TRUE ~ rank(-nota_final, ties.method = "first")
+    ),
+    criterio_priorizacao = case_when(
+      !is.na(red_flags_absolutos) ~ NA_character_,
+      TRUE ~ "Somente nota final; redundância ainda é diagnóstico"
     ),
     status_priorizacao = case_when(
       !is.na(red_flags_absolutos) ~ "Fora da priorização por red flag absoluto",

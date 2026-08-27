@@ -218,6 +218,52 @@ if (nrow(taxas_invalidas) > 0) {
   )
 }
 
+log_taxas = log(metricas_score$taxa_adm_aa)
+centro_log_taxas = median(log_taxas)
+escala_log_taxas = mad(
+  x = log_taxas,
+  center = centro_log_taxas,
+  constant = 1.4826
+)
+
+if (!is.finite(escala_log_taxas) || escala_log_taxas <= .Machine$double.eps) {
+  escala_log_taxas = IQR(log_taxas) / 1.349
+}
+
+z_log_taxas = if (
+  is.finite(escala_log_taxas) &&
+    escala_log_taxas > .Machine$double.eps
+) {
+  (log_taxas - centro_log_taxas) / escala_log_taxas
+} else {
+  rep(0, length(log_taxas))
+}
+
+diagnostico_taxas = metricas_score %>%
+  transmute(
+    nome_plot,
+    taxa_adm_aa,
+    z_robusto_log_taxa = z_log_taxas,
+    taxa_requer_revisao = z_robusto_log_taxa < -LIMITE_Z_ROBUSTO
+  ) %>%
+  arrange(taxa_adm_aa)
+
+write_excel_csv2(
+  x = diagnostico_taxas,
+  file = file.path(path_intermediate, "diagnostico_taxas_36m.csv")
+)
+
+taxas_muito_pequenas = diagnostico_taxas %>%
+  filter(taxa_requer_revisao)
+
+if (nrow(taxas_muito_pequenas) > 0) {
+  print(taxas_muito_pequenas)
+  stop(
+    "Há taxa(s) positiva(s) extremamente pequenas em relação ao universo. ",
+    "Confirme o cadastro antes de calcular a razão excesso/taxa."
+  )
+}
+
 message(
   "[04] Menor taxa válida do universo: ",
   percent(min(metricas_score$taxa_adm_aa), accuracy = 0.01, decimal.mark = ","),

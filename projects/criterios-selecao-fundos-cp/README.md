@@ -37,7 +37,9 @@ Os pacotes são carregados pelo `.Rprofile`; os scripts não repetem chamadas de
 
 ## Metodologia atual
 
-- o score usa exatamente 36 meses completos e comuns a todos os fundos;
+- o score usa exatamente 36 meses encerrados e comuns a todos os fundos;
+- o calendário do CDI define os limites de cada mês; o mês mais recente só entra
+  depois que houver observação no mês seguinte;
 - o histórico completo é preservado para diagnósticos e visualizações;
 - métricas são convertidas em notas de 0 a 100 por z-score robusto e função logística;
 - pesos: retorno 30%, consistência 25%, risco 20% e custo 25%;
@@ -46,6 +48,11 @@ Os pacotes são carregados pelo `.Rprofile`; os scripts não repetem chamadas de
 - não existe limite automático de fundos por cluster nem tamanho fixo de shortlist.
 
 Para comparar candidatos com posições existentes, preencha `data/config/fundos_carteira_atual.csv` usando exatamente os nomes da coluna `nome_plot`.
+
+Para corrigir correspondências de nomes, preencha
+`data/config/de_para_fundos_revisao.csv` com as colunas `nome_xlsx` e
+`nome_quantum`. O pipeline lê essas decisões e nunca sobrescreve o arquivo;
+as sugestões automáticas são exportadas separadamente em `data/intermediate/`.
 
 ## Estrutura
 

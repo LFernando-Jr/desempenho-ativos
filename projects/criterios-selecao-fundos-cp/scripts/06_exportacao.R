@@ -16,6 +16,28 @@ path_relatorio = file.path(path_reports, "analise_high_grade_etapa2_36m.xlsx")
 dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_reports, recursive = TRUE, showWarnings = FALSE)
 
+figuras_canonicas = c(
+  "heatmap_correlacao_excessos_mensais_36m.png",
+  "dendrograma_fundos_excessos_mensais_36m.png",
+  "grafico_ranking_fundos_36m.png",
+  "grafico_pilares_score_36m.png",
+  "heatmap_afinidade_benchmarks_36m.png",
+  "grafico_historico_completo_excesso_cdi.png"
+)
+
+figuras_obsoletas = setdiff(
+  list.files(path = path_figures, pattern = "[.]png$"),
+  figuras_canonicas
+)
+
+if (length(figuras_obsoletas) > 0) {
+  warning(
+    "Há figuras antigas fora do conjunto canônico: ",
+    paste(figuras_obsoletas, collapse = " | "),
+    ". Preserve-as em legacy ou remova-as antes de publicar os outputs finais."
+  )
+}
+
 paths_necessarios = c(
   file.path(path_intermediate, "metricas_todos_fundos_36m.rds"),
   file.path(path_intermediate, "priorizacao_qualitativa_36m.rds"),
@@ -26,7 +48,11 @@ paths_necessarios = c(
   file.path(path_intermediate, "diagnostico_clusters_k_3_7.csv"),
   file.path(path_intermediate, "estabilidade_clusters_janelas.csv"),
   file.path(path_intermediate, "pares_redundancia_36m.csv"),
-  file.path(path_intermediate, "sensibilidade_limiares_redundancia_36m.csv")
+  file.path(path_intermediate, "sensibilidade_limiares_redundancia_36m.csv"),
+  file.path(path_intermediate, "distribuicao_correlacoes_36m.csv"),
+  file.path(path_intermediate, "membros_clusters_k_3_7.csv"),
+  file.path(path_intermediate, "diagnostico_score_36m.csv"),
+  file.path(path_intermediate, "diagnostico_taxas_36m.csv")
 )
 
 paths_ausentes = paths_necessarios[!file.exists(paths_necessarios)]
@@ -80,6 +106,26 @@ pares_redundancia = read_csv2(
 
 sensibilidade_limiares = read_csv2(
   file = file.path(path_intermediate, "sensibilidade_limiares_redundancia_36m.csv"),
+  show_col_types = FALSE
+)
+
+distribuicao_correlacoes = read_csv2(
+  file = file.path(path_intermediate, "distribuicao_correlacoes_36m.csv"),
+  show_col_types = FALSE
+)
+
+membros_clusters = read_csv2(
+  file = file.path(path_intermediate, "membros_clusters_k_3_7.csv"),
+  show_col_types = FALSE
+)
+
+diagnostico_score = read_csv2(
+  file = file.path(path_intermediate, "diagnostico_score_36m.csv"),
+  show_col_types = FALSE
+)
+
+diagnostico_taxas = read_csv2(
+  file = file.path(path_intermediate, "diagnostico_taxas_36m.csv"),
   show_col_types = FALSE
 )
 
@@ -399,6 +445,7 @@ ranking_xlsx = priorizacao_qualitativa %>%
     taxa_adm_aa,
     razao_excesso_taxa,
     prioridade_analise_qualitativa,
+    criterio_priorizacao,
     status_priorizacao,
     fundo_mais_correlacionado,
     correlacao_maxima,
@@ -444,8 +491,12 @@ abas = c(
   "Todos os Fundos",
   "Pares Redundância",
   "Sensib. Redundância",
+  "Distrib. Correlações",
   "Diagnóstico Clusters",
+  "Membros Clusters",
   "Estab. Clusters",
+  "Diagnóstico Score",
+  "Diagnóstico Taxas",
   "Afinidade Benchmarks",
   "Matriz Correlação",
   "Histórico Mensal",
@@ -459,8 +510,12 @@ dados_abas = list(
   "Todos os Fundos" = metricas_todos_fundos,
   "Pares Redundância" = pares_redundancia,
   "Sensib. Redundância" = sensibilidade_limiares,
+  "Distrib. Correlações" = distribuicao_correlacoes,
   "Diagnóstico Clusters" = diagnostico_clusters,
+  "Membros Clusters" = membros_clusters,
   "Estab. Clusters" = estabilidade_clusters,
+  "Diagnóstico Score" = diagnostico_score,
+  "Diagnóstico Taxas" = diagnostico_taxas,
   "Afinidade Benchmarks" = afinidade_benchmarks,
   "Matriz Correlação" = matriz_cor_xlsx,
   "Histórico Mensal" = base_historico_plot,
