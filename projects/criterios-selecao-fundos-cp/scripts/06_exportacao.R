@@ -13,89 +13,6 @@ path_figures = "projects/criterios-selecao-fundos-cp/output/figures"
 path_reports = "projects/criterios-selecao-fundos-cp/output/reports"
 path_relatorio = file.path(path_reports, "analise_high_grade_etapa2_36m.xlsx")
 
-# Remove relações vazias criadas pelo openxlsx quando a planilha não contém
-# desenhos incorporados. O Excel ignora essas referências, mas outros leitores
-# podem interpretar o arquivo como inválido.
-corrige_relacionamentos_xlsx = function(path) {
-  path_temp = tempfile(pattern = "xlsx_relacionamentos_")
-  path_xlsx_temp = tempfile(fileext = ".xlsx")
-
-  dir.create(path = path_temp, recursive = TRUE, showWarnings = FALSE)
-
-  on.exit(
-    expr = {
-      unlink(x = path_temp, recursive = TRUE, force = TRUE)
-      unlink(x = path_xlsx_temp, force = TRUE)
-    },
-    add = TRUE
-  )
-
-  unzip(zipfile = path, exdir = path_temp)
-
-  path_drawings = file.path(path_temp, "xl", "drawings")
-  paths_rels = list.files(
-    path = file.path(path_temp, "xl", "worksheets", "_rels"),
-    pattern = "[.]rels$",
-    full.names = TRUE
-  )
-
-  if (!dir.exists(path_drawings) && length(paths_rels) > 0) {
-    walk(
-      .x = paths_rels,
-      .f = function(path_rels) {
-        xml_rels = readLines(
-          con = path_rels,
-          warn = FALSE,
-          encoding = "UTF-8"
-        ) %>%
-          paste(collapse = "") %>%
-          str_remove_all(
-            pattern = paste0(
-              "<Relationship[^>]+Type=\"",
-              "[^\"]+/(drawing|vmlDrawing)\"",
-              "[^>]*/>"
-            )
-          )
-
-        writeLines(
-          text = xml_rels,
-          con = path_rels,
-          useBytes = TRUE
-        )
-      }
-    )
-  }
-
-  arquivos_xlsx = list.files(
-    path = path_temp,
-    recursive = TRUE,
-    all.files = TRUE,
-    no.. = TRUE
-  )
-
-  zipr = getExportedValue(ns = "zip", name = "zipr")
-
-  zipr(
-    zipfile = path_xlsx_temp,
-    files = arquivos_xlsx,
-    recurse = TRUE,
-    include_directories = FALSE,
-    root = path_temp
-  )
-
-  substituiu_arquivo = file.copy(
-    from = path_xlsx_temp,
-    to = path,
-    overwrite = TRUE
-  )
-
-  if (!substituiu_arquivo) {
-    stop("Não foi possível substituir o workbook após a validação estrutural.")
-  }
-
-  invisible(path)
-}
-
 dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_reports, recursive = TRUE, showWarnings = FALSE)
 
@@ -731,8 +648,5 @@ saveWorkbook(
   overwrite = TRUE
 )
 
-# corrige_relacionamentos_xlsx(path = path_relatorio)
-
-# message("[06] Workbook validado sem relações internas pendentes.")
 message("[06] Gráficos e workbook final exportados.")
 message("[06] Relatório: ", path_relatorio)

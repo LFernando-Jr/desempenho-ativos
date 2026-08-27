@@ -72,12 +72,17 @@ calendario_mensal_cdi = calendario_cdi %>%
     n_datas_cdi = n(),
     .groups = "drop"
   ) %>%
+  arrange(mes) %>%
   mutate(
     ultimo_dia_calendario = ceiling_date(mes, unit = "month") - days(1),
     dias_sem_cdi_no_fim = as.integer(ultimo_dia_calendario - ultima_data_cdi),
-    mes_encerrado = mes < floor_date(Sys.Date(), unit = "month") &
-      dias_sem_cdi_no_fim >= 0 &
-      dias_sem_cdi_no_fim <= 3
+    mes_seguinte_observado = lead(mes) == mes %m+% months(1),
+    mes_encerrado = coalesce(
+      mes_seguinte_observado &
+        dias_sem_cdi_no_fim >= 0 &
+        dias_sem_cdi_no_fim <= 3,
+      FALSE
+    )
   )
 
 fundos_retornos_historico = fundos_raw %>%
@@ -266,7 +271,7 @@ cobertura_mensal = fundos_retornos_historico %>%
     ultima_data = max(data),
     n_obs = n(),
     n_cdi_validos = sum(is.finite(ret_cdi)),
-    n_intervalos_invalidos = sum(!is.finite(n_du) | n_du < 1),
+    n_intervalos_invalidos = sum(!is.finite(n_du) | n_du != 1),
     .groups = "drop"
   ) %>%
   left_join(
@@ -278,6 +283,7 @@ cobertura_mensal = fundos_retornos_historico %>%
     mes_completo = coalesce(
       data_inicio_intervalo == data_inicio_intervalo_esperada &
         ultima_data == ultima_data_cdi &
+        n_obs == n_datas_cdi &
         n_cdi_validos == n_obs &
         n_intervalos_invalidos == 0,
       FALSE
