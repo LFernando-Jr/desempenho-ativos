@@ -48,6 +48,26 @@ cfg_pesos_custo = c(
 # Limite operacional aplicado ao z-score antes da transformação logística.
 LIMITE_Z_ROBUSTO = 4
 
+# Régua de aprovação: corte central e faixa simétrica para evitar falsa precisão.
+CFG_CORTE_APROVACAO = 55
+CFG_MARGEM_FRONTEIRA = 3
+CFG_NOTA_MINIMA_PILAR = 30
+
+LIMITE_INFERIOR_FRONTEIRA = CFG_CORTE_APROVACAO - CFG_MARGEM_FRONTEIRA
+LIMITE_SUPERIOR_FRONTEIRA = CFG_CORTE_APROVACAO + CFG_MARGEM_FRONTEIRA
+
+if (
+  CFG_CORTE_APROVACAO < 0 ||
+    CFG_CORTE_APROVACAO > 100 ||
+    CFG_MARGEM_FRONTEIRA < 0 ||
+    LIMITE_INFERIOR_FRONTEIRA < 0 ||
+    LIMITE_SUPERIOR_FRONTEIRA > 100 ||
+    CFG_NOTA_MINIMA_PILAR < 0 ||
+    CFG_NOTA_MINIMA_PILAR > 100
+) {
+  stop("Parâmetros de aprovação fora do intervalo válido de 0 a 100.")
+}
+
 # Valida os vetores de pesos antes de calcular qualquer nota.
 valida_pesos = function(pesos, nome_bloco) {
   if (abs(sum(pesos) - 1) > 1e-10) {
@@ -374,14 +394,35 @@ ranking_fundos = ranking_base %>%
     ranking_geral = row_number(),
     quartil_score = ntile(desc(nota_final), 4),
     classificacao_descritiva = paste0("Q", quartil_score),
+    nota_minima_pilar = pmin(
+      nota_retorno,
+      nota_consistencia,
+      nota_risco,
+      nota_custo
+    ),
+    pilar_abaixo_minimo = nota_minima_pilar < CFG_NOTA_MINIMA_PILAR,
+    zona_fronteira = case_when(
+      !is.na(red_flags_absolutos) ~ FALSE,
+      nota_final >= LIMITE_SUPERIOR_FRONTEIRA & !pilar_abaixo_minimo ~ FALSE,
+      nota_final >= LIMITE_INFERIOR_FRONTEIRA ~ TRUE,
+      TRUE ~ FALSE
+    ),
     aprovado_quantitativo = case_when(
       !is.na(red_flags_absolutos) ~ FALSE,
-      TRUE ~ NA
+      zona_fronteira ~ NA,
+      nota_final >= LIMITE_SUPERIOR_FRONTEIRA & !pilar_abaixo_minimo ~ TRUE,
+      TRUE ~ FALSE
     ),
-    zona_fronteira = NA,
     status_quantitativo = case_when(
       !is.na(red_flags_absolutos) ~ "Reprovado por red flag absoluto",
-      TRUE ~ "Pendente de calibração da aprovação"
+      aprovado_quantitativo %in% TRUE ~ "Aprovado quantitativo com margem",
+      zona_fronteira & pilar_abaixo_minimo &
+        nota_final < LIMITE_SUPERIOR_FRONTEIRA ~
+        "Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo",
+      zona_fronteira & pilar_abaixo_minimo ~
+        "Zona cinzenta: pilar abaixo do mínimo",
+      zona_fronteira ~ "Zona cinzenta: nota próxima ao corte",
+      TRUE ~ "Não aprovado quantitativamente"
     ),
     quartil_retorno = ntile(desc(nota_retorno), 4),
     quartil_consistencia = ntile(desc(nota_consistencia), 4),
@@ -406,12 +447,22 @@ diagnostico_score = tibble(
   metrica = c(
     "correlacao_nota_retorno_eficiencia",
     "limite_drawdown_relativo",
-    "limite_cauda_relativo"
+    "limite_cauda_relativo",
+    "corte_aprovacao",
+    "margem_fronteira",
+    "limite_inferior_fronteira",
+    "limite_superior_fronteira",
+    "nota_minima_pilar"
   ),
   valor = c(
     correlacao_retorno_eficiencia,
     limite_drawdown_relativo,
-    limite_cauda_relativo
+    limite_cauda_relativo,
+    CFG_CORTE_APROVACAO,
+    CFG_MARGEM_FRONTEIRA,
+    LIMITE_INFERIOR_FRONTEIRA,
+    LIMITE_SUPERIOR_FRONTEIRA,
+    CFG_NOTA_MINIMA_PILAR
   )
 )
 
@@ -430,4 +481,14 @@ write_excel_csv2(
   file = file.path(path_intermediate, "diagnostico_score_36m.csv")
 )
 
-message("[04] Score de qualidade concluído; aprovação permanece pendente de calibração.")
+message(
+  "[04] Aprovação aplicada: nota >= ",
+  LIMITE_SUPERIOR_FRONTEIRA,
+  "; zona cinzenta de ",
+  LIMITE_INFERIOR_FRONTEIRA,
+  " a abaixo de ",
+  LIMITE_SUPERIOR_FRONTEIRA,
+  "; piso de ",
+  CFG_NOTA_MINIMA_PILAR,
+  " por pilar."
+)
