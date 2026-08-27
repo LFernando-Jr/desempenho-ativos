@@ -14,9 +14,22 @@ path_matriz_cor = file.path(path_intermediate, "matriz_correlacao_excessos_36m.r
 path_mensais_historico = file.path(path_intermediate, "fundos_mensais_historico.rds")
 path_mensais_score = file.path(path_intermediate, "fundos_mensais_score_36m.rds")
 path_carteira_atual = "projects/criterios-selecao-fundos-cp/data/config/fundos_carteira_atual.csv"
+path_avaliacao_qualitativa = "projects/criterios-selecao-fundos-cp/data/config/avaliacao_qualitativa.csv"
 
 # Valores candidatos usados apenas para mostrar a sensibilidade dos alertas.
 cfg_limiares_redundancia = c(0.75, 0.80, 0.85, 0.90)
+
+# Faixas usadas somente como alerta e priorização, nunca como exclusão automática.
+LIMIAR_REDUNDANCIA_ATENCAO = 0.80
+LIMIAR_REDUNDANCIA_ELEVADA = 0.85
+LIMIAR_REDUNDANCIA_MUITO_ELEVADA = 0.90
+
+status_qualitativos_validos = c(
+  "Aprovado qualitativamente",
+  "Aprovado com limite ou condição",
+  "Pendente de informações",
+  "Reprovado qualitativamente"
+)
 
 # Quantidades de clusters avaliadas sem escolher uma solução definitiva.
 cfg_k_clusters = 3:7
@@ -77,6 +90,17 @@ adjusted_rand_index = function(grupos_a, grupos_b) {
   }
 
   (soma_celulas - esperado) / denominador
+}
+
+# Classifica a correlação sem convertê-la em veto automático.
+classifica_redundancia = function(correlacao) {
+  case_when(
+    !is.finite(correlacao) ~ NA_character_,
+    correlacao >= LIMIAR_REDUNDANCIA_MUITO_ELEVADA ~ "Muito elevada",
+    correlacao >= LIMIAR_REDUNDANCIA_ELEVADA ~ "Elevada",
+    correlacao >= LIMIAR_REDUNDANCIA_ATENCAO ~ "Atenção",
+    TRUE ~ "Sem alerta"
+  )
 }
 
 # Forma clusters em uma janela histórica comum para testar estabilidade temporal.
@@ -141,9 +165,9 @@ calcula_grupos_janela = function(
 # Universo da análise de redundância
 # ------------------------------------------------------------
 
-# Enquanto a aprovação não está calibrada, usa fundos sem red flag absoluto.
+# A diligência e a redundância concentram-se nos aprovados e na zona cinzenta.
 fundos_candidatos = ranking_fundos %>%
-  filter(is.na(red_flags_absolutos)) %>%
+  filter(aprovado_quantitativo %in% TRUE | zona_fronteira) %>%
   pull(nome_plot)
 
 carteira_atual = if (file.exists(path_carteira_atual)) {
@@ -155,6 +179,78 @@ carteira_atual = if (file.exists(path_carteira_atual)) {
     distinct(nome_plot)
 } else {
   tibble(nome_plot = character())
+}
+
+avaliacao_qualitativa = if (file.exists(path_avaliacao_qualitativa)) {
+  base_avaliacao = read_csv2(
+    file = path_avaliacao_qualitativa,
+    show_col_types = FALSE
+  ) %>%
+    mutate(across(everything(), as.character))
+
+  colunas_avaliacao = c(
+    "nome_plot",
+    "status_qualitativo",
+    "observacao_qualitativa"
+  )
+
+  colunas_ausentes = setdiff(colunas_avaliacao, names(base_avaliacao))
+
+  if (length(colunas_ausentes) > 0) {
+    stop(
+      "Colunas ausentes em avaliacao_qualitativa.csv: ",
+      paste(colunas_ausentes, collapse = ", "),
+      "."
+    )
+  }
+
+  duplicados_avaliacao = base_avaliacao %>%
+    filter(!is.na(nome_plot), nome_plot != "") %>%
+    count(nome_plot) %>%
+    filter(n > 1)
+
+  if (nrow(duplicados_avaliacao) > 0) {
+    stop("Há fundos duplicados em avaliacao_qualitativa.csv.")
+  }
+
+  base_avaliacao %>%
+    filter(!is.na(nome_plot), nome_plot != "") %>%
+    mutate(
+      status_qualitativo = na_if(status_qualitativo, ""),
+      observacao_qualitativa = na_if(observacao_qualitativa, "")
+    )
+} else {
+  tibble(
+    nome_plot = character(),
+    status_qualitativo = character(),
+    observacao_qualitativa = character()
+  )
+}
+
+fundos_qualitativos_ausentes = setdiff(
+  avaliacao_qualitativa$nome_plot,
+  ranking_fundos$nome_plot
+)
+
+if (length(fundos_qualitativos_ausentes) > 0) {
+  stop(
+    "Fundos da avaliação qualitativa não encontrados no ranking: ",
+    paste(fundos_qualitativos_ausentes, collapse = ", "),
+    "."
+  )
+}
+
+status_qualitativos_invalidos = setdiff(
+  na.omit(avaliacao_qualitativa$status_qualitativo),
+  status_qualitativos_validos
+)
+
+if (length(status_qualitativos_invalidos) > 0) {
+  stop(
+    "Status qualitativos inválidos: ",
+    paste(status_qualitativos_invalidos, collapse = " | "),
+    "."
+  )
 }
 
 fundos_carteira_disponiveis = intersect(
@@ -216,7 +312,8 @@ pares_redundancia = as.data.frame(
       fundo_a_carteira & fundo_b_carteira ~ "Entre posições atuais",
       envolve_carteira_atual ~ "Candidato versus posição atual",
       TRUE ~ "Entre candidatos"
-    )
+    ),
+    nivel_redundancia = classifica_redundancia(correlacao)
   ) %>%
   arrange(desc(correlacao))
 
@@ -279,8 +376,12 @@ resumo_redundancia = map_dfr(
       nome_plot = nome_fundo,
       fundo_mais_correlacionado = fundo_maximo,
       correlacao_maxima = correlacao_maxima,
+      nivel_redundancia_maxima = classifica_redundancia(correlacao_maxima),
       fundo_carteira_mais_correlacionado = fundo_maximo_carteira,
-      correlacao_maxima_carteira = correlacao_maxima_carteira
+      correlacao_maxima_carteira = correlacao_maxima_carteira,
+      nivel_redundancia_carteira = classifica_redundancia(
+        correlacao_maxima_carteira
+      )
     )
   }
 )
@@ -409,18 +510,33 @@ priorizacao_qualitativa = ranking_fundos %>%
     relationship = "one-to-one",
     suffix = c("", "_redundancia")
   ) %>%
+  left_join(
+    avaliacao_qualitativa,
+    by = "nome_plot",
+    relationship = "one-to-one"
+  ) %>%
   mutate(
     prioridade_analise_qualitativa = case_when(
-      !is.na(red_flags_absolutos) ~ NA_integer_,
-      TRUE ~ rank(-nota_final, ties.method = "first")
+      aprovado_quantitativo %in% TRUE | zona_fronteira ~
+        ranking_geral,
+      TRUE ~ NA_integer_
     ),
     criterio_priorizacao = case_when(
-      !is.na(red_flags_absolutos) ~ NA_character_,
-      TRUE ~ "Somente nota final; redundância ainda é diagnóstico"
+      aprovado_quantitativo %in% TRUE | zona_fronteira ~
+        "Aprovados e zona cinzenta ordenados pela nota; redundância é diagnóstico",
+      TRUE ~ NA_character_
     ),
     status_priorizacao = case_when(
       !is.na(red_flags_absolutos) ~ "Fora da priorização por red flag absoluto",
-      TRUE ~ "Prioridade provisória; aprovação ainda não calibrada"
+      aprovado_quantitativo %in% TRUE ~ "Prioridade: aprovado quantitativo",
+      zona_fronteira ~ "Prioridade: zona cinzenta",
+      TRUE ~ "Fora da diligência inicial por nota"
+    ),
+    status_qualitativo = case_when(
+      !is.na(status_qualitativo) ~ status_qualitativo,
+      aprovado_quantitativo %in% TRUE | zona_fronteira ~
+        "Pendente de análise qualitativa",
+      TRUE ~ "Não aplicável na diligência inicial"
     )
   ) %>%
   arrange(prioridade_analise_qualitativa, ranking_geral)
