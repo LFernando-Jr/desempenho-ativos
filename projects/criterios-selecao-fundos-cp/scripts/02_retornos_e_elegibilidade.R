@@ -73,7 +73,11 @@ calendario_mensal_cdi = calendario_cdi %>%
     .groups = "drop"
   ) %>%
   mutate(
-    mes_encerrado = mes < max(mes)
+    ultimo_dia_calendario = ceiling_date(mes, unit = "month") - days(1),
+    dias_sem_cdi_no_fim = as.integer(ultimo_dia_calendario - ultima_data_cdi),
+    mes_encerrado = mes < floor_date(Sys.Date(), unit = "month") &
+      dias_sem_cdi_no_fim >= 0 &
+      dias_sem_cdi_no_fim <= 3
   )
 
 fundos_retornos_historico = fundos_raw %>%
