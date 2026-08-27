@@ -13,6 +13,89 @@ path_figures = "projects/criterios-selecao-fundos-cp/output/figures"
 path_reports = "projects/criterios-selecao-fundos-cp/output/reports"
 path_relatorio = file.path(path_reports, "analise_high_grade_etapa2_36m.xlsx")
 
+# Remove relações vazias criadas pelo openxlsx quando a planilha não contém
+# desenhos incorporados. O Excel ignora essas referências, mas outros leitores
+# podem interpretar o arquivo como inválido.
+corrige_relacionamentos_xlsx = function(path) {
+  path_temp = tempfile(pattern = "xlsx_relacionamentos_")
+  path_xlsx_temp = tempfile(fileext = ".xlsx")
+
+  dir.create(path = path_temp, recursive = TRUE, showWarnings = FALSE)
+
+  on.exit(
+    expr = {
+      unlink(x = path_temp, recursive = TRUE, force = TRUE)
+      unlink(x = path_xlsx_temp, force = TRUE)
+    },
+    add = TRUE
+  )
+
+  unzip(zipfile = path, exdir = path_temp)
+
+  path_drawings = file.path(path_temp, "xl", "drawings")
+  paths_rels = list.files(
+    path = file.path(path_temp, "xl", "worksheets", "_rels"),
+    pattern = "[.]rels$",
+    full.names = TRUE
+  )
+
+  if (!dir.exists(path_drawings) && length(paths_rels) > 0) {
+    walk(
+      .x = paths_rels,
+      .f = function(path_rels) {
+        xml_rels = readLines(
+          con = path_rels,
+          warn = FALSE,
+          encoding = "UTF-8"
+        ) %>%
+          paste(collapse = "") %>%
+          str_remove_all(
+            pattern = paste0(
+              "<Relationship[^>]+Type=\"",
+              "[^\"]+/(drawing|vmlDrawing)\"",
+              "[^>]*/>"
+            )
+          )
+
+        writeLines(
+          text = xml_rels,
+          con = path_rels,
+          useBytes = TRUE
+        )
+      }
+    )
+  }
+
+  arquivos_xlsx = list.files(
+    path = path_temp,
+    recursive = TRUE,
+    all.files = TRUE,
+    no.. = TRUE
+  )
+
+  zipr = getExportedValue(x = "zip", name = "zipr")
+
+  zipr(
+    zipfile = path_xlsx_temp,
+    files = arquivos_xlsx,
+    recurse = TRUE,
+    include_directories = FALSE,
+    root = path_temp
+  )
+
+  substituiu_arquivo = file.copy(
+    from = path_xlsx_temp,
+    to = path,
+    overwrite = TRUE
+  )
+
+  if (!substituiu_arquivo) {
+    stop("Não foi possível substituir o workbook após a validação estrutural.")
+  }
+
+  invisible(path)
+}
+
 dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_reports, recursive = TRUE, showWarnings = FALSE)
 
@@ -217,6 +300,13 @@ dev.off()
 # Score
 # ------------------------------------------------------------
 
+cores_quartis = c(
+  "Q1" = "#1B7837",
+  "Q2" = "#5AAE61",
+  "Q3" = "#FDB863",
+  "Q4" = "#D73027"
+)
+
 base_ranking_plot = priorizacao_qualitativa %>%
   mutate(
     nome_plot = fct_reorder(nome_plot, nota_final),
@@ -229,14 +319,7 @@ grafico_ranking = ggplot(
 ) +
   geom_col(width = 0.75) +
   coord_flip() +
-  scale_fill_manual(
-    values = c(
-      "Q1" = "#1B7837",
-      "Q2" = "#5AAE61",
-      "Q3" = "#FDB863",
-      "Q4" = "#D73027"
-    )
-  ) +
+  scale_fill_manual(values = cores_quartis) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(
     title = "Score de qualidade individual",
@@ -394,6 +477,7 @@ grafico_historico = ggplot(
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.4) +
   geom_line(linewidth = 0.55, alpha = 0.60) +
   facet_wrap(facets = vars(quartil), ncol = 2, scales = "free_y") +
+  scale_color_manual(values = cores_quartis) +
   scale_y_continuous(labels = percent_format(accuracy = 0.1, decimal.mark = ",")) +
   labs(
     title = "Histórico completo do excesso acumulado sobre o CDI",
@@ -522,6 +606,11 @@ dados_abas = list(
   "Metodologia" = metodologia_xlsx
 )
 
+estilo_nota = createStyle(numFmt = "0.0")
+estilo_percentual = createStyle(numFmt = "0.00%")
+estilo_decimal = createStyle(numFmt = "0.00")
+estilo_data = createStyle(numFmt = "mmm/yyyy")
+
 iwalk(
   .x = dados_abas,
   .f = function(dados, aba) {
@@ -548,6 +637,76 @@ iwalk(
       cols = seq_len(ncol(dados)),
       widths = "auto"
     )
+
+    if (nrow(dados) > 0) {
+      linhas_dados = seq.int(from = 2, to = nrow(dados) + 1)
+      nomes_colunas = names(dados)
+
+      colunas_notas = which(str_detect(nomes_colunas, "^(nota_|score_)"))
+      colunas_percentuais = which(
+        str_detect(
+          nomes_colunas,
+          "(^ret_|^excesso_|hit_rate|volatilidade|drawdown|cauda|taxa_adm|tracking_error)"
+        ) & nomes_colunas != "razao_excesso_taxa"
+      )
+      colunas_decimais = which(
+        str_detect(
+          nomes_colunas,
+          "(correlacao|silhouette|adjusted_rand|z_robusto|razao_excesso_taxa|^valor$)"
+        )
+      )
+      colunas_datas = which(
+        str_detect(nomes_colunas, "(^mes$|^mes_fim$|data)")
+      )
+
+      if (length(colunas_percentuais) > 0) {
+        addStyle(
+          wb = wb,
+          sheet = aba,
+          style = estilo_percentual,
+          rows = linhas_dados,
+          cols = colunas_percentuais,
+          gridExpand = TRUE,
+          stack = TRUE
+        )
+      }
+
+      if (length(colunas_decimais) > 0) {
+        addStyle(
+          wb = wb,
+          sheet = aba,
+          style = estilo_decimal,
+          rows = linhas_dados,
+          cols = colunas_decimais,
+          gridExpand = TRUE,
+          stack = TRUE
+        )
+      }
+
+      if (length(colunas_notas) > 0) {
+        addStyle(
+          wb = wb,
+          sheet = aba,
+          style = estilo_nota,
+          rows = linhas_dados,
+          cols = colunas_notas,
+          gridExpand = TRUE,
+          stack = TRUE
+        )
+      }
+
+      if (length(colunas_datas) > 0) {
+        addStyle(
+          wb = wb,
+          sheet = aba,
+          style = estilo_data,
+          rows = linhas_dados,
+          cols = colunas_datas,
+          gridExpand = TRUE,
+          stack = TRUE
+        )
+      }
+    }
   }
 )
 
@@ -557,5 +716,8 @@ saveWorkbook(
   overwrite = TRUE
 )
 
+corrige_relacionamentos_xlsx(path = path_relatorio)
+
+message("[06] Workbook validado sem relações internas pendentes.")
 message("[06] Gráficos e workbook final exportados.")
 message("[06] Relatório: ", path_relatorio)
