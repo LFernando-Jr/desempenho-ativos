@@ -1,12 +1,7 @@
-# Setup -------------------------------------------------------------------
+# ETAPA 2 — RETORNOS E ELEGIBILIDADE
+# Execute preferencialmente por 00_run_all.R.
 
-rm(list = ls())
-
-# Coleta -----------------------------------------------------------------
-
-# parte da refatoração como já discutimos
-
-# Tratamento -------------------------------------------------------------
+# ------------------------------------------------------------
 
 benchs_wide = benchs_raw %>%
   pivot_wider(
@@ -25,8 +20,9 @@ benchs_anterior = benchs_wide %>%
     -data_anterior
   )
 
-
-# Cálculo de retorno -----------------------------------------------------
+# ------------------------------------------------------------
+# 5. Retornos e excessos
+# ------------------------------------------------------------
 
 fundos_retornos = fundos_raw %>%
   left_join(
@@ -110,8 +106,9 @@ fundos_retornos = fundos_raw %>%
   ) %>%
   filter(!is.na(ret_liq))
 
-
-# Checks -----------------------------------------------------------------
+# ------------------------------------------------------------
+# 6. Checagens
+# ------------------------------------------------------------
 
 fundos_mapeados = fundos_raw %>%
   semi_join(
@@ -171,10 +168,13 @@ fundos_defasados = fundos_raw %>%
 cat("\nFundos cuja série termina antes da data máxima:\n")
 print(fundos_defasados)
 
-
-# Exclusões --------------------------------------------------------------
-
-# a partir deste ponto, a análise exclui fundos que não:
+# ------------------------------------------------------------
+# 7. Saídas da base
+# ------------------------------------------------------------
+# ------------------------------------------------------------
+# 7. Elegibilidade: 36 meses completos
+# ------------------------------------------------------------
+# A partir deste ponto, a análise exclui fundos que não:
 # - tenham histórico praticamente integral de 36 meses;
 # - cheguem à data final comum da base;
 # - possuam quantidade mínima de observações na janela;
@@ -265,11 +265,8 @@ print(
 )
 
 write_excel_csv2(
-  x = fundos_excluidos_36m,
-  file = paste0(
-    "projects/criterios-selecao-fundos-cp/data/intermediate/",
-    "fundos_excluidos_janela_36m.csv"
-  )
+  fundos_excluidos_36m,
+  "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_excluidos_janela_36m.csv"
 )
 
 # Exclui do restante da análise os fundos sem 36 meses completos.
@@ -285,19 +282,17 @@ fundos_retornos = fundos_retornos %>%
     )
   )
 
-
-# Exportação -------------------------------------------------------------
+# ------------------------------------------------------------
+# 8. Saídas da base elegível
+# ------------------------------------------------------------
 
 write_rds(
-  x = fundos_retornos,
-  file = paste0(
-    "projects/criterios-selecao-fundos-cp/data/intermediate/",
-    "fundos_retornos_etapa1_36m.rds"
-  )
+  fundos_retornos,
+  "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_retornos_etapa1_36m.rds"
 )
 
 write_excel_csv2(
-  x = fundos_retornos %>%
+  fundos_retornos %>%
     select(
       nome_xlsx,
       nome_curto,
@@ -321,9 +316,10 @@ write_excel_csv2(
       excesso_ida_liq_di_liq,
       ret_irfm_1,
       excesso_irfm_1_liq
-    ),
-  file = paste0(
-    "projects/criterios-selecao-fundos-cp/data/intermediate/",
-    "fundos_retornos_etapa1_36m.csv"
-  )
+  ),
+  "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_retornos_etapa1_36m.csv"
 )
+
+# ------------------------------------------------------------
+# 9. Visualização 1:
+#    janelas de excesso anualizado sobre o CDI
