@@ -1,29 +1,21 @@
-# ETAPA 1 — IMPORTAÇÃO E DE-PARA
-# Execute preferencialmente por 00_run_all.R.
+# Setup -------------------------------------------------------------------
 
-# ============================================================
-# FUNDOS HIGH GRADE — ETAPA 1
-# Importação, de-para validado, retornos, excessos,
-# nomes limpos e visualizações iniciais.
-# ============================================================
+rm(list = ls())
 
-library(tidyverse)
-library(readxl)
-library(lubridate)
-library(janitor)
-library(stringi)
-library(scales)
-library(ggrepel)
+arquivo_xlsx = paste0(
+  "projects/criterios-selecao-fundos-cp/data/input/",
+  "analise_quantitativa_fundos_high_grade.xlsx"
+)
+arquivo_fundos = paste0(
+  "projects/criterios-selecao-fundos-cp/data/input/",
+  "funds_hist.csv"
+)
 
-# ------------------------------------------------------------
-# 0. Caminhos
-# ------------------------------------------------------------
+arquivo_benchs = paste0(
+  "projects/criterios-selecao-fundos-cp/data/input/",
+  "benchs_hist.csv"
+)
 
-arquivo_xlsx = "projects/criterios-selecao-fundos-cp/data/input/analise_quantitativa_fundos_high_grade.xlsx"
-arquivo_fundos = "projects/criterios-selecao-fundos-cp/data/input/funds_hist.csv"
-arquivo_benchs = "projects/criterios-selecao-fundos-cp/data/input/benchs_hist.csv"
-
-# Janela estrutural padrão da análise.
 JANELA_PADRAO_MESES = 36L
 
 locale_quantum = locale(
@@ -32,12 +24,10 @@ locale_quantum = locale(
   encoding = "Windows-1252"
 )
 
-# ------------------------------------------------------------
-# 1. Importação
-# ------------------------------------------------------------
+# Coleta -----------------------------------------------------------------
 
 fundos_raw = read_delim(
-  arquivo_fundos,
+  file = arquivo_fundos,
   delim = ";",
   locale = locale_quantum,
   show_col_types = FALSE,
@@ -106,11 +96,10 @@ if (anyDuplicated(benchs_raw[c("benchmark", "data")]) > 0) {
   stop("Há mais de um nível para o mesmo benchmark e data em benchs_hist.csv.")
 }
 
-# ------------------------------------------------------------
-# 2. Funções para nomes
-# ------------------------------------------------------------
+# Tratamento -------------------------------------------------------------
 
-# 2.1. Normalização usada somente para sugerir o de-para.
+## helpers ---------------------------------------------------------------
+
 termos_genericos = c(
   "RESP",
   "LIMITADA",
@@ -154,6 +143,7 @@ termos_genericos = c(
   "E"
 )
 
+
 normaliza_nome = function(x) {
   x %>%
     stri_trans_general("Latin-ASCII") %>%
@@ -166,9 +156,7 @@ normaliza_nome = function(x) {
     )
 }
 
-# 2.2. Limpeza usada somente para exibição nos gráficos.
-# Preserva marca, estratégia, Advisory, Plus, High Grade,
-# Yield, Feeder, números e outros termos distintivos.
+# limpeza usada somente para exibição nos gráficos
 termos_exibicao = c(
   "RESP",
   "LIMITADA",
@@ -227,11 +215,7 @@ limpa_nome_exibicao = function(x) {
     })
 }
 
-# ------------------------------------------------------------
-# 3. De-para dos nomes
-# ------------------------------------------------------------
-# A similaridade serve apenas para sugerir correspondências.
-# Novus e JGP são exceções validadas manualmente.
+## execução --------------------------------------------------------------
 
 nomes_xlsx = taxas_xlsx %>%
   mutate(chave_xlsx = normaliza_nome(nome_xlsx))
@@ -256,7 +240,6 @@ de_para = nomes_xlsx %>%
     nome_quantum = nomes_quantum$nome_quantum[indice_melhor]
   )
 
-# Localiza um único nome da Quantum a partir de um padrão.
 encontra_nome_quantum = function(padrao) {
   candidatos = nomes_quantum %>%
     filter(
@@ -289,10 +272,11 @@ nome_jgp_corporate_quantum = encontra_nome_quantum(
   "JGP.*CORPORATE.*FEEDER III"
 )
 
-# Correções validadas:
-# 1. Novus foi associado incorretamente à Tríade pelo algoritmo.
+# correções validadas:
+# 1. Novus foi associado incorretamente à Tríade pelo algoritmo
 # 2. O JGP Feeder II foi pesquisado por CNPJ e aparece como
-#    Feeder III no nome exportado pela Quantum.
+#    Feeder III no nome exportado pela Quantum
+
 de_para = de_para %>%
   mutate(
     nome_quantum = case_when(
@@ -355,7 +339,7 @@ de_para = de_para %>%
   ) %>%
   group_by(nome_curto) %>%
   mutate(
-    # Se dois fundos virarem o mesmo nome curto, mantém o nome
+    # se dois fundos virarem o mesmo nome curto, mantém o nome
     # oficial completo para não misturar produtos distintos.
     nome_plot = if_else(
       n() > 1,
@@ -375,9 +359,7 @@ de_para = de_para %>%
     revisar
   )
 
-# ------------------------------------------------------------
-# 3.1. Validação do de-para
-# ------------------------------------------------------------
+## validação -------------------------------------------------------------
 
 duplicados_de_para = de_para %>%
   count(nome_quantum, name = "n") %>%
@@ -437,5 +419,4 @@ write_excel_csv2(
   "projects/criterios-selecao-fundos-cp/data/config/de_para_fundos_revisao.csv"
 )
 
-# ------------------------------------------------------------
-# 4. Benchmarks em formato largo
+message("[01] Importação e de-para concluídos.")

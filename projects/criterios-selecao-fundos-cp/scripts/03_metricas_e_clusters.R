@@ -1,28 +1,15 @@
-# ETAPA 3 — MÉTRICAS E CLUSTERS
-# Execute preferencialmente por 00_run_all.R.
+# Setup -------------------------------------------------------------------
 
-# ============================================================
-# FUNDOS HIGH GRADE — ETAPA 2
-# Base mensal, correlação e clustering, consistência,
-# drawdown relativo ao CDI e afinidade com benchmarks.
-#
-# Pré-requisito:
-# - executar antes o script da Etapa 1;
-# - ter no diretório o arquivo fundos_retornos_etapa1_36m.rds.
-# ============================================================
+rm(list = ls())
 
-library(tidyverse)
-library(lubridate)
-library(slider)
-library(scales)
-library(ggrepel)
-library(openxlsx)
+# Coleta -----------------------------------------------------------------
 
-# ------------------------------------------------------------
-# 0. Parâmetros e caminhos
-# ------------------------------------------------------------
+# parte da refatoração como já discutimos
 
-arquivo_entrada = "projects/criterios-selecao-fundos-cp/data/intermediate/fundos_retornos_etapa1_36m.rds"
+arquivo_entrada = paste0(
+  "projects/criterios-selecao-fundos-cp/data/intermediate/",
+  "fundos_retornos_etapa1_36m.rds"
+)
 
 MIN_OBS_MES = 15L
 MIN_MESES_COR = 36L

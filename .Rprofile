@@ -15,7 +15,11 @@ pacotes = c(
   "PerformanceAnalytics",
   "lubridate",
   "zoo",
-  "ggrepel"
+  "ggrepel",
+  "scales",
+  "stringi",
+  "readxl",
+  "slider"
 )
 
 lapply(pacotes, library, character.only = TRUE)

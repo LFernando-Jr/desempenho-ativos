@@ -1,8 +1,12 @@
-# Pipeline canônico — critérios de seleção de fundos de crédito privado
+# Rodar todos os scripts do projeto critérios de seleção de fundos de crédito privado
 
 if (!dir.exists("projects/criterios-selecao-fundos-cp")) {
   stop(
-    "Abra a pasta raiz 'desempenho-ativos' no Positron antes de rodar este pipeline."
+    paste(
+      "Abra a pasta raiz 'desempenho-ativos' no",
+      "Positron antes de rodar este pipeline.",
+      sep = " "
+    )
   )
 }
 
