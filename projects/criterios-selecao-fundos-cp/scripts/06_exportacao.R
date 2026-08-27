@@ -249,7 +249,7 @@ grafico_ranking = ggplot(
   scale_y_continuous(limits = c(0, 100)) +
   labs(
     title = "Score de qualidade individual",
-    subtitle = "Quartis são descritivos; aprovação quantitativa ainda será calibrada",
+    subtitle = "Aprovado com margem a partir de 58; zona cinzenta entre 52 e abaixo de 58",
     x = NULL,
     y = "Nota",
     fill = NULL
@@ -443,6 +443,10 @@ ranking_xlsx = priorizacao_qualitativa %>%
     quartil_score,
     classificacao_descritiva,
     status_quantitativo,
+    aprovado_quantitativo,
+    zona_fronteira,
+    nota_minima_pilar,
+    pilar_abaixo_minimo,
     red_flags_absolutos,
     alertas_relativos,
     nota_retorno,
@@ -462,10 +466,14 @@ ranking_xlsx = priorizacao_qualitativa %>%
     prioridade_analise_qualitativa,
     criterio_priorizacao,
     status_priorizacao,
+    status_qualitativo,
+    observacao_qualitativa,
     fundo_mais_correlacionado,
     correlacao_maxima,
+    nivel_redundancia_maxima,
     fundo_carteira_mais_correlacionado,
-    correlacao_maxima_carteira
+    correlacao_maxima_carteira,
+    nivel_redundancia_carteira
   )
 
 metodologia_xlsx = tibble(
@@ -478,7 +486,11 @@ metodologia_xlsx = tibble(
     "Custo",
     "Diferenciação",
     "Aprovação",
+    "Zona cinzenta",
+    "Piso por pilar",
+    "Avaliação qualitativa",
     "Redundância",
+    "Faixas de redundância",
     "Clusters"
   ),
   decisao = c(
@@ -489,8 +501,12 @@ metodologia_xlsx = tibble(
     "Hit rates mensal 40%, 6 meses 20% e 12 meses 40%",
     "Taxa 60% e razão excesso líquido/taxa 40%",
     "Não integra o score de qualidade",
-    "Pendente de calibração; quartis são apenas descritivos",
+    "Aprovado com margem: nota >= 58, sem red flag e sem pilar abaixo de 30",
+    "Nota de 52 a abaixo de 58, ou nota >= 58 com algum pilar abaixo de 30",
+    "Nota mínima de 30 em retorno, consistência, risco e custo; falha direciona à zona cinzenta",
+    "Decisão manual: aprovado; aprovado com condição; pendente de informações; reprovado",
     "Diagnóstico posterior ao score; sem exclusão automática",
+    "Atenção >= 0,80; elevada >= 0,85; muito elevada >= 0,90",
     "k de 3 a 7 em diagnóstico; nenhum k definitivo"
   )
 )
