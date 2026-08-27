@@ -454,6 +454,13 @@ if (file.exists(path_de_para_manual)) {
     mutate(
       correspondencia_manual = !is.na(nome_quantum_manual),
       nome_quantum = coalesce(nome_quantum_manual, nome_quantum),
+      chave_xlsx_manual = normaliza_nome(nome_xlsx),
+      chave_quantum_manual = normaliza_nome(nome_quantum),
+      distancia_manual = map2_int(
+        chave_xlsx_manual,
+        chave_quantum_manual,
+        ~ as.integer(adist(.x, .y)[1])
+      ),
       criterio_match = if_else(
         correspondencia_manual,
         "Validado no arquivo de configuração",
@@ -461,7 +468,13 @@ if (file.exists(path_de_para_manual)) {
       ),
       similaridade = if_else(
         correspondencia_manual,
-        1,
+        1 -
+          distancia_manual /
+            pmax(
+              nchar(chave_xlsx_manual),
+              nchar(chave_quantum_manual),
+              1
+            ),
         similaridade
       ),
       revisar = if_else(
@@ -470,7 +483,13 @@ if (file.exists(path_de_para_manual)) {
         revisar
       )
     ) %>%
-    select(-nome_quantum_manual, -correspondencia_manual)
+    select(
+      -nome_quantum_manual,
+      -correspondencia_manual,
+      -chave_xlsx_manual,
+      -chave_quantum_manual,
+      -distancia_manual
+    )
 
   message(
     "[01] Correspondências manuais aplicadas: ",
