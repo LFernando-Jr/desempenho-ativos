@@ -13,3 +13,20 @@ renv/staging/
 
 # Dados gerados pelos scripts
 output
+
+# Outputs canônicos versionados — seleção de fundos High Grade
+!projects/criterios-selecao-fundos-cp/output/
+projects/criterios-selecao-fundos-cp/output/*
+
+!projects/criterios-selecao-fundos-cp/output/figures/
+projects/criterios-selecao-fundos-cp/output/figures/*
+!projects/criterios-selecao-fundos-cp/output/figures/dendrograma_fundos_excessos_mensais_36m.png
+!projects/criterios-selecao-fundos-cp/output/figures/grafico_historico_completo_excesso_cdi.png
+!projects/criterios-selecao-fundos-cp/output/figures/grafico_pilares_score_36m.png
+!projects/criterios-selecao-fundos-cp/output/figures/grafico_ranking_fundos_36m.png
+!projects/criterios-selecao-fundos-cp/output/figures/heatmap_afinidade_benchmarks_36m.png
+!projects/criterios-selecao-fundos-cp/output/figures/heatmap_correlacao_excessos_mensais_36m.png
+
+!projects/criterios-selecao-fundos-cp/output/reports/
+projects/criterios-selecao-fundos-cp/output/reports/*
+!projects/criterios-selecao-fundos-cp/output/reports/analise_high_grade_etapa2_36m.xlsx
