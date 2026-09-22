@@ -55,14 +55,28 @@ fundos_raw = read_delim(
   ) %>%
   arrange(nome_quantum, data)
 
-benchs_raw = read_delim(
+benchs_input = read_delim(
   file = path_benchs,
   delim = ";",
   locale = locale_quantum,
   show_col_types = FALSE,
   trim_ws = TRUE
 ) %>%
-  clean_names() %>%
+  clean_names()
+
+# A Quantum passou a exportar "Número Índice". Mantém compatibilidade
+# com exportações anteriores que usavam "Número Índice Ajustados".
+colunas_indice_aceitas = c("numero_indice", "numero_indice_ajustados")
+coluna_indice = intersect(colunas_indice_aceitas, names(benchs_input))[1]
+
+if (is.na(coluna_indice)) {
+  stop(
+    "O benchs_hist.csv não contém uma coluna de índice reconhecida. ",
+    "Esperado: Número Índice ou Número Índice Ajustados."
+  )
+}
+
+benchs_raw = benchs_input %>%
   transmute(
     benchmark = recode(
       nome_do_ativo,
@@ -72,7 +86,7 @@ benchs_raw = read_delim(
       "IRF-M 1" = "irfm_1"
     ),
     data = dmy(data),
-    indice = as.numeric(numero_indice_ajustados)
+    indice = as.numeric(.data[[coluna_indice]])
   ) %>%
   filter(
     benchmark %in% c("cdi", "ida_di", "ida_liq_di", "irfm_1"),
