@@ -8,7 +8,7 @@ rm(list = ls())
 # ------------------------------------------------------------
 
 # Caminhos dos insumos e das saídas desta etapa.
-path_xlsx = "projects/criterios-selecao-fundos-cp/data/input/analise_quantitativa_fundos_high_grade.xlsx"
+path_cadastro = "projects/criterios-selecao-fundos-cp/data/input/cadastro.csv"
 path_fundos = "projects/criterios-selecao-fundos-cp/data/input/funds_hist.csv"
 path_benchs = "projects/criterios-selecao-fundos-cp/data/input/benchs_hist.csv"
 path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
@@ -81,16 +81,54 @@ benchs_raw = read_delim(
   ) %>%
   arrange(benchmark, data)
 
-cadastro_fundos = read_excel(
-  path = path_xlsx,
-  sheet = "Base Tratada"
+# O CSV versionado é a fonte única do cadastro. Lê tudo como texto para
+# preservar nomes e interpretar a taxa anual com vírgula decimal.
+cadastro_raw = read_delim(
+  file = path_cadastro,
+  delim = ";",
+  locale = locale(decimal_mark = ",", grouping_mark = ".", encoding = "UTF-8"),
+  col_types = cols(.default = col_character()),
+  trim_ws = TRUE,
+  show_col_types = FALSE
 ) %>%
-  clean_names() %>%
+  clean_names()
+
+colunas_cadastro_necessarias = c("fundo", "taxa_de_administracao")
+colunas_cadastro_ausentes = setdiff(
+  colunas_cadastro_necessarias,
+  names(cadastro_raw)
+)
+
+if (length(colunas_cadastro_ausentes) > 0) {
+  stop(
+    "O cadastro.csv não contém as colunas: ",
+    paste(colunas_cadastro_ausentes, collapse = ", "),
+    "."
+  )
+}
+
+cadastro_fundos = cadastro_raw %>%
   transmute(
     nome_xlsx = fundo,
-    taxa_adm_aa = as.numeric(taxa_de_administracao)
-  ) %>%
-  filter(!is.na(nome_xlsx))
+    taxa_adm_aa = parse_double(
+      taxa_de_administracao,
+      locale = locale(decimal_mark = ",", grouping_mark = ".")
+    )
+  )
+
+if (any(is.na(cadastro_fundos$nome_xlsx) | cadastro_fundos$nome_xlsx == "")) {
+  stop("O cadastro.csv contém fundos sem nome.")
+}
+
+if (anyDuplicated(cadastro_fundos$nome_xlsx) > 0) {
+  stop("O cadastro.csv contém nomes de fundos duplicados.")
+}
+
+if (any(is.na(cadastro_fundos$taxa_adm_aa) |
+        !is.finite(cadastro_fundos$taxa_adm_aa) |
+        cadastro_fundos$taxa_adm_aa <= 0)) {
+  stop("O cadastro.csv contém taxa de administração anual inválida.")
+}
 
 message("[01] Fundos no histórico: ", n_distinct(fundos_raw$nome_quantum))
 message("[01] Fundos no cadastro: ", n_distinct(cadastro_fundos$nome_xlsx))
@@ -522,7 +560,7 @@ if (nrow(duplicados_de_para) > 0) {
   )
 
   stop(
-    "O de-para associou mais de um fundo do XLSX ",
+    "O de-para associou mais de um fundo do cadastro ",
     "ao mesmo fundo da Quantum."
   )
 }
@@ -555,7 +593,7 @@ print(
     anti_join(de_para, by = "nome_quantum")
 )
 
-cat("\nFundos do XLSX sem correspondência:\n")
+cat("\nFundos do cadastro sem correspondência:\n")
 
 print(
   cadastro_fundos %>%
