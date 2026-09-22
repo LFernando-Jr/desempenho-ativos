@@ -41,7 +41,7 @@ if (length(pacotes_ausentes) > 0) {
 }
 
 arquivos_entrada = c(
-  "projects/criterios-selecao-fundos-cp/data/input/analise_quantitativa_fundos_high_grade.xlsx",
+  "projects/criterios-selecao-fundos-cp/data/input/cadastro.csv",
   "projects/criterios-selecao-fundos-cp/data/input/funds_hist.csv",
   "projects/criterios-selecao-fundos-cp/data/input/benchs_hist.csv"
 )
