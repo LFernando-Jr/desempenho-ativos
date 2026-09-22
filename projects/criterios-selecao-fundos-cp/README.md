@@ -12,6 +12,8 @@ source("projects/criterios-selecao-fundos-cp/00_setup_projeto.R")
 
 Esse script apenas valida pacotes e arquivos de entrada. Ele não executa a análise.
 
+O cadastro operacional é `data/input/cadastro.csv` (separador `;`, UTF-8 e vírgula decimal). As colunas `Fundo` e `Taxa de Administração` alimentam a etapa 1; a taxa é uma fração anual (por exemplo, `0,007` = 0,7% a.a.). As demais colunas ficam disponíveis para consulta, mas não entram no score atual. A planilha `analise_quantitativa_fundos_high_grade.xlsx` não é mais insumo do pipeline.
+
 ## Como executar
 
 Premissa operacional: abra a pasta raiz `desempenho-ativos` no Positron antes de rodar este pipeline. O diretório de trabalho da sessão R deve ser a raiz `desempenho-ativos`, não a pasta `projects/criterios-selecao-fundos-cp`.
@@ -60,12 +62,12 @@ Os status aceitos são: `Aprovado qualitativamente`,
 
 Para corrigir correspondências de nomes, preencha
 `data/config/de_para_fundos_revisao.csv` com as colunas `nome_xlsx` e
-`nome_quantum`. O pipeline lê essas decisões e nunca sobrescreve o arquivo;
+`nome_quantum`. O campo `nome_xlsx` permanece como chave interna legada e deve corresponder exatamente à coluna `Fundo` do CSV. O pipeline lê essas decisões e nunca sobrescreve o arquivo;
 as sugestões automáticas são exportadas separadamente em `data/intermediate/`.
 
 ## Estrutura
 
-- `data/input/`: exportações necessárias para reproduzir a análise;
+- `data/input/`: `cadastro.csv` e históricos atualizados de cotas e benchmarks necessários para reproduzir a análise;
 - `data/config/`: decisões manuais versionadas, especialmente o de-para;
 - `data/intermediate/`: CSVs e RDS recriados pelo pipeline e ignorados pelo Git;
 - `output/figures/`: gráficos finais versionados;
