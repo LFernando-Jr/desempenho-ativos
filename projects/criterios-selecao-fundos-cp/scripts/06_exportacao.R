@@ -25,7 +25,9 @@ figuras_canonicas = c(
   "grafico_score_risco_36m.png",
   "grafico_score_custo_36m.png",
   "heatmap_afinidade_benchmarks_36m.png",
-  "grafico_historico_completo_excesso_cdi.png"
+  "grafico_excesso_cdi_quartis_36m.png",
+  "grafico_excesso_cdi_fundos_aprovados_36m.png",
+  "grafico_drawdown_excesso_cdi_aprovados_36m.png"
 )
 
 figuras_obsoletas = setdiff(
@@ -48,6 +50,7 @@ paths_necessarios = c(
   file.path(path_intermediate, "dendrograma_diagnostico_36m.rds"),
   file.path(path_intermediate, "afinidade_benchmarks_36m.rds"),
   file.path(path_intermediate, "fundos_mensais_historico.rds"),
+  file.path(path_intermediate, "fundos_mensais_score_36m.rds"),
   file.path(path_intermediate, "diagnostico_clusters_k_3_7.csv"),
   file.path(path_intermediate, "estabilidade_clusters_janelas.csv"),
   file.path(path_intermediate, "pares_redundancia_36m.csv"),
@@ -90,6 +93,10 @@ afinidade_benchmarks = read_rds(
 
 fundos_mensais_historico = read_rds(
   file = file.path(path_intermediate, "fundos_mensais_historico.rds")
+)
+
+fundos_mensais_score = read_rds(
+  file = file.path(path_intermediate, "fundos_mensais_score_36m.rds")
 )
 
 diagnostico_clusters = read_csv2(
@@ -383,15 +390,14 @@ ggsave(
 )
 
 # ------------------------------------------------------------
-# Histórico completo
+# Trajetórias na janela comum de 36 meses
 # ------------------------------------------------------------
 
+# Mantém o histórico completo na planilha, embora os gráficos usem a janela comum.
 base_historico_plot = fundos_mensais_historico %>%
   inner_join(
-    priorizacao_qualitativa %>%
-      select(nome_plot, quartil_score),
-    by = "nome_plot",
-    relationship = "many-to-one"
+    priorizacao_qualitativa %>% select(nome_plot, quartil_score),
+    by = "nome_plot", relationship = "many-to-one"
   ) %>%
   group_by(nome_plot, quartil_score) %>%
   arrange(mes, .by_group = TRUE) %>%
@@ -399,28 +405,63 @@ base_historico_plot = fundos_mensais_historico %>%
   ungroup() %>%
   mutate(quartil = paste0("Q", quartil_score))
 
-grafico_historico = ggplot(
-  data = base_historico_plot,
-  mapping = aes(
-    x = mes,
-    y = excesso_cdi_acumulado,
-    group = nome_plot,
-    color = quartil
+mes_inicio_plot = min(fundos_mensais_score$mes) - 1
+
+base_trajetorias_plot = fundos_mensais_score %>%
+  inner_join(
+    priorizacao_qualitativa %>%
+      select(nome_plot, quartil_score, aprovado_quantitativo),
+    by = "nome_plot",
+    relationship = "many-to-one"
+  ) %>%
+  group_by(nome_plot) %>%
+  arrange(mes, .by_group = TRUE) %>%
+  mutate(excesso_cdi_acumulado = cumprod(1 + excesso_cdi_m) - 1) %>%
+  ungroup() %>%
+  select(nome_plot, mes, quartil_score, aprovado_quantitativo,
+         excesso_cdi_acumulado) %>%
+  bind_rows(
+    priorizacao_qualitativa %>%
+      transmute(
+        nome_plot,
+        mes = mes_inicio_plot,
+        quartil_score,
+        aprovado_quantitativo,
+        excesso_cdi_acumulado = 0
+      )
+  ) %>%
+  arrange(nome_plot, mes) %>%
+  group_by(nome_plot) %>%
+  mutate(drawdown_excesso =
+           (1 + excesso_cdi_acumulado) /
+           cummax(1 + excesso_cdi_acumulado) - 1) %>%
+  ungroup() %>%
+  mutate(quartil = paste0("Q", quartil_score))
+
+base_quartis_plot = base_trajetorias_plot %>%
+  group_by(mes, quartil) %>%
+  summarise(
+    mediana = median(excesso_cdi_acumulado),
+    p25 = quantile(excesso_cdi_acumulado, 0.25),
+    p75 = quantile(excesso_cdi_acumulado, 0.75),
+    .groups = "drop"
   )
-) +
+
+grafico_quartis = ggplot(base_quartis_plot, aes(x = mes, color = quartil)) +
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.4) +
-  geom_line(linewidth = 0.55, alpha = 0.60) +
-  facet_wrap(facets = vars(quartil), ncol = 2, scales = "free_y") +
+  geom_ribbon(aes(ymin = p25, ymax = p75, fill = quartil),
+              alpha = 0.12, color = NA) +
+  geom_line(aes(y = mediana), linewidth = 1) +
   scale_color_manual(values = cores_quartis) +
-  scale_y_continuous(
-    labels = percent_format(accuracy = 0.1, decimal.mark = ",")
-  ) +
+  scale_fill_manual(values = cores_quartis, guide = "none") +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1,
+                                            decimal.mark = ",")) +
   labs(
-    title = "Histórico completo do excesso acumulado sobre o CDI",
-    subtitle = "O histórico completo é diagnóstico; somente os 36 meses comuns entram no score",
+    title = "Excesso acumulado sobre o CDI por quartil",
+    subtitle = "36 meses comuns; linha = mediana dos fundos; faixa = intervalo interquartil",
     x = NULL,
     y = "Excesso acumulado",
-    color = NULL
+    color = "Quartil do score"
   ) +
   theme_minimal(base_size = 10) +
   theme(
@@ -429,14 +470,72 @@ grafico_historico = ggplot(
   )
 
 ggsave(
-  filename = file.path(
-    path_figures,
-    "grafico_historico_completo_excesso_cdi.png"
-  ),
-  plot = grafico_historico,
-  width = 15,
-  height = 10,
-  dpi = 300
+  filename = file.path(path_figures, "grafico_excesso_cdi_quartis_36m.png"),
+  plot = grafico_quartis,
+  width = 12, height = 7, dpi = 300, bg = "white"
+)
+
+base_aprovados_plot = base_trajetorias_plot %>%
+  filter(aprovado_quantitativo)
+
+rotulos_aprovados = base_aprovados_plot %>%
+  group_by(nome_plot) %>%
+  slice_max(mes, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+grafico_aprovados = ggplot(
+  base_aprovados_plot,
+  aes(x = mes, y = excesso_cdi_acumulado, group = nome_plot, color = nome_plot)
+) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.4) +
+  geom_line(linewidth = 0.8) +
+  ggrepel::geom_text_repel(
+    data = rotulos_aprovados,
+    aes(label = nome_plot),
+    direction = "y", hjust = 0, nudge_x = 30,
+    segment.color = "grey70", max.overlaps = Inf, size = 3
+  ) +
+  scale_x_date(expand = expansion(mult = c(0.02, 0.30))) +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1,
+                                            decimal.mark = ",")) +
+  guides(color = "none") +
+  labs(
+    title = "Excesso acumulado sobre o CDI — aprovados quantitativamente",
+    subtitle = "Mesma janela de 36 meses; fundos da zona cinzenta não exibidos",
+    x = NULL, y = "Excesso acumulado"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(face = "bold"))
+
+ggsave(
+  filename = file.path(path_figures,
+                       "grafico_excesso_cdi_fundos_aprovados_36m.png"),
+  plot = grafico_aprovados,
+  width = 14, height = 8, dpi = 300, bg = "white"
+)
+
+grafico_drawdown = ggplot(
+  base_aprovados_plot,
+  aes(x = mes, y = drawdown_excesso)
+) +
+  geom_hline(yintercept = 0, color = "grey70") +
+  geom_area(fill = "#B35850", alpha = 0.7) +
+  facet_wrap(vars(nome_plot), ncol = 3) +
+  scale_y_continuous(labels = percent_format(accuracy = 0.1,
+                                            decimal.mark = ",")) +
+  labs(
+    title = "Drawdown do excesso sobre o CDI — aprovados quantitativamente",
+    subtitle = "36 meses comuns; queda em relação ao pico anterior de excesso acumulado",
+    x = NULL, y = "Drawdown do excesso"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(plot.title = element_text(face = "bold"))
+
+ggsave(
+  filename = file.path(path_figures,
+                       "grafico_drawdown_excesso_cdi_aprovados_36m.png"),
+  plot = grafico_drawdown,
+  width = 14, height = 9, dpi = 300, bg = "white"
 )
 
 # ------------------------------------------------------------
