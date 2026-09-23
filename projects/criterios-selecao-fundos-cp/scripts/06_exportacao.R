@@ -709,33 +709,49 @@ for (i in seq_len(nrow(indice_fundos))) {
          x = "Excesso diário (pontos-base)", y = "Densidade") +
     theme_minimal(base_size = 10)
 
-  painel_fundo = patchwork::wrap_plots(
-    grafico_trajetoria_fundo,
-    grafico_drawdown_fundo,
-    grafico_distribuicao_fundo,
-    ncol = 1,
-    heights = c(1, 1, 1.25)
-  ) +
-    patchwork::plot_annotation(
-      title = paste0(if (tem_score) {
-        sprintf("%02d", indice_fundos$ranking_geral[[i]])
-      } else "Sem score", " | ", nome_fundo),
-      subtitle = paste0(indice_fundos$status_quantitativo[[i]],
-                        " | ", janela_fundo),
-      caption = paste0(
-        "Distribuição: ", length(retornos), " dias; ",
-        sprintf("%.1f%%", 100 * mean(retornos < 0)),
-        " abaixo do CDI; assimetria ", sprintf("%.2f", assimetria),
-        "; excesso de curtose ", sprintf("%.2f", curtose_excesso),
-        ". Indicadores descritivos, não critérios de aprovação."
-      )
-    )
-
-  ggsave(
-    filename = file.path(path_fundos_figures, indice_fundos$arquivo[[i]]),
-    plot = painel_fundo,
-    width = 11, height = 10, dpi = 200, bg = "white"
+  titulo_fundo = paste0(if (tem_score) {
+    sprintf("%02d", indice_fundos$ranking_geral[[i]])
+  } else "Sem score", " | ", nome_fundo)
+  subtitulo_fundo = paste0(indice_fundos$status_quantitativo[[i]],
+                           " | ", janela_fundo)
+  rodape_fundo = paste0(
+    "Distribuição: ", length(retornos), " dias; ",
+    sprintf("%.1f%%", 100 * mean(retornos < 0)),
+    " abaixo do CDI; assimetria ", sprintf("%.2f", assimetria),
+    "; excesso de curtose ", sprintf("%.2f", curtose_excesso),
+    ". Indicadores descritivos, não critérios de aprovação."
   )
+
+  png(
+    filename = file.path(path_fundos_figures, indice_fundos$arquivo[[i]]),
+    width = 2200, height = 2000, res = 200, bg = "white"
+  )
+  grid::grid.newpage()
+  layout_fundo = grid::grid.layout(
+    nrow = 5, ncol = 1,
+    heights = grid::unit(c(0.65, 1, 1, 1.25, 0.28), "null")
+  )
+  grid::pushViewport(grid::viewport(layout = layout_fundo))
+  grid::grid.text(
+    paste(titulo_fundo, subtitulo_fundo, sep = "\n"),
+    x = grid::unit(0.02, "npc"), y = grid::unit(0.85, "npc"),
+    just = c("left", "top"),
+    gp = grid::gpar(fontsize = 12),
+    vp = grid::viewport(layout.pos.row = 1)
+  )
+  print(grafico_trajetoria_fundo,
+        vp = grid::viewport(layout.pos.row = 2))
+  print(grafico_drawdown_fundo,
+        vp = grid::viewport(layout.pos.row = 3))
+  print(grafico_distribuicao_fundo,
+        vp = grid::viewport(layout.pos.row = 4))
+  grid::grid.text(
+    rodape_fundo, x = grid::unit(0.5, "npc"),
+    gp = grid::gpar(fontsize = 8),
+    vp = grid::viewport(layout.pos.row = 5)
+  )
+  grid::popViewport()
+  dev.off()
 }
 
 write_csv2(indice_fundos, file.path(path_fundos_figures, "indice.csv"))
