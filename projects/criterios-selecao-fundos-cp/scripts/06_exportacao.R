@@ -595,6 +595,31 @@ indice_inelegiveis = universo_elegibilidade %>%
 
 indice_fundos = bind_rows(indice_elegiveis, indice_inelegiveis)
 
+# Diagnóstico histórico: cada ponto usa 36 meses completos e consecutivos.
+# Não participa do score nem substitui a janela comum da classificação.
+base_excesso_movel_36m = fundos_mensais_historico %>%
+  select(nome_plot, mes, excesso_cdi_m) %>%
+  filter(is.finite(excesso_cdi_m)) %>%
+  arrange(nome_plot, mes) %>%
+  group_by(nome_plot) %>%
+  mutate(
+    inicio_janela = lag(mes, 35L),
+    excesso_36m_acumulado = slide_dbl(
+      .x = excesso_cdi_m,
+      .f = ~ prod(1 + .x) - 1,
+      .before = 35L,
+      .complete = TRUE
+    ),
+    excesso_cdi_aa_movel_36m = if_else(
+      !is.na(inicio_janela) &
+        mes == inicio_janela %m+% months(35L),
+      (1 + excesso_36m_acumulado)^(1 / 3) - 1,
+      NA_real_
+    )
+  ) %>%
+  ungroup() %>%
+  filter(is.finite(excesso_cdi_aa_movel_36m))
+
 # Para séries sem score, aplica a mesma integridade mensal da Etapa 2.
 meses_validos_fichas = fundos_retornos_historico %>%
   mutate(mes = floor_date(data, unit = "month")) %>%
@@ -719,6 +744,38 @@ for (i in seq_len(nrow(indice_fundos))) {
          y = "Queda desde o pico") +
     theme_minimal(base_size = 10)
 
+  dados_moveis = base_excesso_movel_36m %>%
+    filter(nome_plot == nome_fundo)
+
+  if (nrow(dados_moveis) > 0) {
+    grafico_movel_fundo = ggplot(
+      dados_moveis,
+      aes(x = mes, y = excesso_cdi_aa_movel_36m)
+    ) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
+      geom_line(color = "#2F5496", linewidth = 0.8) +
+      scale_y_continuous(labels = percent_format(
+        accuracy = 0.1, decimal.mark = ","
+      )) +
+      labs(
+        title = "Excesso anualizado sobre o CDI em janelas móveis de 36 meses",
+        subtitle = "Histórico completo; cada ponto exige 36 meses consecutivos",
+        x = NULL, y = "Excesso anualizado"
+      ) +
+      theme_minimal(base_size = 10)
+  } else {
+    grafico_movel_fundo = ggplot() +
+      annotate(
+        "text", x = 0, y = 0,
+        label = "Sem 36 meses completos e consecutivos no histórico",
+        color = "grey45", size = 4
+      ) +
+      xlim(-1, 1) + ylim(-1, 1) +
+      labs(title = "Excesso anualizado em janelas móveis de 36 meses") +
+      theme_void(base_size = 10) +
+      theme(plot.title = element_text(face = "plain"))
+  }
+
   grafico_distribuicao_fundo = ggplot(
     dados_diarios, aes(x = excesso_cdi_pb)
   ) +
@@ -746,12 +803,12 @@ for (i in seq_len(nrow(indice_fundos))) {
 
   png(
     filename = file.path(path_fundos_figures, indice_fundos$arquivo[[i]]),
-    width = 2200, height = 2000, res = 200, bg = "white"
+    width = 2200, height = 2600, res = 200, bg = "white"
   )
   grid::grid.newpage()
   layout_fundo = grid::grid.layout(
-    nrow = 5, ncol = 1,
-    heights = grid::unit(c(0.65, 1, 1, 1.25, 0.28), "null")
+    nrow = 6, ncol = 1,
+    heights = grid::unit(c(0.65, 1, 1, 1.1, 1.25, 0.28), "null")
   )
   grid::pushViewport(grid::viewport(layout = layout_fundo))
   grid::grid.text(
@@ -765,12 +822,14 @@ for (i in seq_len(nrow(indice_fundos))) {
         vp = grid::viewport(layout.pos.row = 2))
   print(grafico_drawdown_fundo,
         vp = grid::viewport(layout.pos.row = 3))
-  print(grafico_distribuicao_fundo,
+  print(grafico_movel_fundo,
         vp = grid::viewport(layout.pos.row = 4))
+  print(grafico_distribuicao_fundo,
+        vp = grid::viewport(layout.pos.row = 5))
   grid::grid.text(
     rodape_fundo, x = grid::unit(0.5, "npc"),
     gp = grid::gpar(fontsize = 8),
-    vp = grid::viewport(layout.pos.row = 5)
+    vp = grid::viewport(layout.pos.row = 6)
   )
   grid::popViewport()
   dev.off()
@@ -827,6 +886,8 @@ metodologia_xlsx = tibble(
   item = c(
     "Janela do score",
     "Histórico completo",
+    "Excesso anualizado sobre CDI",
+    "Janela móvel de 36 meses",
     "Conversão das métricas",
     "Pesos dos pilares",
     "Consistência",
@@ -843,6 +904,8 @@ metodologia_xlsx = tibble(
   decisao = c(
     "36 meses completos e comuns a todos os fundos",
     "Preservado apenas para diagnósticos e visualizações",
+    "Produto dos excessos mensais geométricos elevado a 12/36, menos 1; não é spread de crédito ou diferença simples entre taxas anualizadas",
+    "Nas fichas individuais, cada ponto usa 36 meses completos e consecutivos do histórico; diagnóstico fora do score",
     "Z-score robusto com MAD padrão, limite [-4,4] e logística 0-100",
     "Retorno 30%; consistência 25%; risco 20%; custo 25%",
     "Hit rates mensal 40%, 6 meses 20% e 12 meses 40%",
@@ -878,7 +941,8 @@ abas = c(
   "Afinidade Benchmarks",
   "Matriz Correlação",
   "Histórico Mensal",
-  "Metodologia"
+  "Metodologia",
+  "Dicionário"
 )
 
 walk(.x = abas, .f = ~ addWorksheet(wb = wb, sheetName = .x, gridLines = FALSE))
@@ -900,10 +964,17 @@ dados_abas = list(
   "Metodologia" = metodologia_xlsx
 )
 
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/dicionario_campos.R",
+  encoding = "UTF-8"
+)
+dados_abas[["Dicionário"]] = cria_dicionario_campos(dados_abas)
+
 estilo_nota = createStyle(numFmt = "0.0")
 estilo_percentual = createStyle(numFmt = "0.00%")
 estilo_decimal = createStyle(numFmt = "0.00")
 estilo_data = createStyle(numFmt = "mmm/yyyy")
+estilo_dicionario = createStyle(wrapText = TRUE, valign = "center")
 
 iwalk(
   .x = dados_abas,
@@ -925,12 +996,28 @@ iwalk(
       firstActiveCol = 2
     )
 
-    setColWidths(
-      wb = wb,
-      sheet = aba,
-      cols = seq_len(ncol(dados)),
-      widths = "auto"
-    )
+    if (aba == "Dicionário") {
+      setColWidths(
+        wb = wb, sheet = aba, cols = seq_len(ncol(dados)),
+        widths = c(24, 36, 78, 24, 31, 44)
+      )
+      addStyle(
+        wb = wb, sheet = aba, style = estilo_dicionario,
+        rows = seq.int(2, nrow(dados) + 1), cols = seq_len(ncol(dados)),
+        gridExpand = TRUE, stack = TRUE
+      )
+      setRowHeights(
+        wb = wb, sheet = aba,
+        rows = seq.int(2, nrow(dados) + 1), heights = 32
+      )
+    } else {
+      setColWidths(
+        wb = wb,
+        sheet = aba,
+        cols = seq_len(ncol(dados)),
+        widths = "auto"
+      )
+    }
 
     if (nrow(dados) > 0) {
       linhas_dados = seq.int(from = 2, to = nrow(dados) + 1)
