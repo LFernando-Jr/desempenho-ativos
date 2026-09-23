@@ -10,10 +10,12 @@ rm(list = ls())
 # Caminhos dos insumos e das saídas desta etapa.
 path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
 path_figures = "projects/criterios-selecao-fundos-cp/output/figures"
+path_fundos_figures = file.path(path_figures, "fundos")
 path_reports = "projects/criterios-selecao-fundos-cp/output/reports"
 path_relatorio = file.path(path_reports, "analise_high_grade_etapa2_36m.xlsx")
 
 dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
+dir.create(path = path_fundos_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_reports, recursive = TRUE, showWarnings = FALSE)
 
 figuras_canonicas = c(
@@ -51,6 +53,10 @@ paths_necessarios = c(
   file.path(path_intermediate, "afinidade_benchmarks_36m.rds"),
   file.path(path_intermediate, "fundos_mensais_historico.rds"),
   file.path(path_intermediate, "fundos_mensais_score_36m.rds"),
+  file.path(path_intermediate, "fundos_retornos_score_36m.rds"),
+  file.path(path_intermediate, "fundos_retornos_historico.rds"),
+  file.path(path_intermediate, "universo_elegibilidade_36m.rds"),
+  file.path(path_intermediate, "calendario_mensal_cdi.rds"),
   file.path(path_intermediate, "diagnostico_clusters_k_3_7.csv"),
   file.path(path_intermediate, "estabilidade_clusters_janelas.csv"),
   file.path(path_intermediate, "pares_redundancia_36m.csv"),
@@ -97,6 +103,22 @@ fundos_mensais_historico = read_rds(
 
 fundos_mensais_score = read_rds(
   file = file.path(path_intermediate, "fundos_mensais_score_36m.rds")
+)
+
+fundos_retornos_score = read_rds(
+  file = file.path(path_intermediate, "fundos_retornos_score_36m.rds")
+)
+
+fundos_retornos_historico = read_rds(
+  file = file.path(path_intermediate, "fundos_retornos_historico.rds")
+)
+
+universo_elegibilidade = read_rds(
+  file = file.path(path_intermediate, "universo_elegibilidade_36m.rds")
+)
+
+calendario_mensal_cdi = read_rds(
+  file = file.path(path_intermediate, "calendario_mensal_cdi.rds")
 )
 
 diagnostico_clusters = read_csv2(
@@ -537,6 +559,186 @@ ggsave(
   plot = grafico_drawdown,
   width = 14, height = 9, dpi = 300, bg = "white"
 )
+
+# Fichas diagnósticas individuais para todo o universo cadastrado.
+# Não alteram nota, classificação ou prioridade de diligência.
+indice_elegiveis = priorizacao_qualitativa %>%
+  arrange(ranking_geral) %>%
+  transmute(
+    ranking_geral,
+    nome_plot,
+    status_quantitativo,
+    meses_completos = 36L,
+    arquivo = sprintf("fundo_%02d.png", ranking_geral)
+  )
+
+indice_inelegiveis = universo_elegibilidade %>%
+  filter(!elegivel_score_36m) %>%
+  arrange(nome_plot) %>%
+  mutate(arquivo = sprintf("fundo_sem_score_%02d.png", row_number())) %>%
+  transmute(
+    ranking_geral = NA_integer_,
+    nome_plot,
+    status_quantitativo = paste0("Sem score: ", motivo_inelegibilidade),
+    meses_completos = n_meses_completos,
+    arquivo
+  )
+
+indice_fundos = bind_rows(indice_elegiveis, indice_inelegiveis)
+
+# Para séries sem score, aplica a mesma integridade mensal da Etapa 2.
+meses_validos_fichas = fundos_retornos_historico %>%
+  mutate(mes = floor_date(data, unit = "month")) %>%
+  filter(mes >= min(fundos_mensais_score$mes),
+         mes <= max(fundos_mensais_score$mes)) %>%
+  group_by(nome_plot, mes) %>%
+  summarise(
+    data_inicio_intervalo = data_anterior[which.min(data)],
+    ultima_data = max(data),
+    n_obs = n(),
+    n_cdi_validos = sum(is.finite(ret_cdi)),
+    n_intervalos_invalidos = sum(!is.finite(n_du) | n_du != 1),
+    .groups = "drop"
+  ) %>%
+  left_join(calendario_mensal_cdi, by = "mes", relationship = "many-to-one") %>%
+  filter(
+    data_inicio_intervalo == data_inicio_intervalo_esperada,
+    ultima_data == ultima_data_cdi,
+    n_obs == n_datas_cdi,
+    n_cdi_validos == n_obs,
+    n_intervalos_invalidos == 0,
+    mes_encerrado
+  ) %>%
+  select(nome_plot, mes)
+
+stopifnot(
+  all(table(fundos_mensais_score$nome_plot) == 36L),
+  setequal(indice_fundos$nome_plot, universo_elegibilidade$nome_plot)
+)
+
+for (i in seq_len(nrow(indice_fundos))) {
+  nome_fundo = indice_fundos$nome_plot[[i]]
+  tem_score = !is.na(indice_fundos$ranking_geral[[i]])
+
+  if (tem_score) {
+    dados_mensais = base_trajetorias_plot %>%
+      filter(nome_plot == nome_fundo)
+    dados_diarios = fundos_retornos_score %>%
+      filter(nome_plot == nome_fundo, is.finite(excesso_cdi_liq))
+    janela_fundo = "janela comum de 36 meses"
+  } else {
+    meses_fundo = fundos_mensais_historico %>%
+      filter(nome_plot == nome_fundo,
+             mes >= min(fundos_mensais_score$mes),
+             mes <= max(fundos_mensais_score$mes)) %>%
+      semi_join(meses_validos_fichas, by = c("nome_plot", "mes")) %>%
+      arrange(mes)
+    stopifnot(nrow(meses_fundo) == indice_fundos$meses_completos[[i]])
+    dados_mensais = meses_fundo %>%
+      mutate(excesso_cdi_acumulado = cumprod(1 + excesso_cdi_m) - 1) %>%
+      select(nome_plot, mes, excesso_cdi_acumulado) %>%
+      bind_rows(tibble(
+        nome_plot = nome_fundo,
+        mes = min(meses_fundo$mes) - 1,
+        excesso_cdi_acumulado = 0
+      )) %>%
+      arrange(mes) %>%
+      mutate(drawdown_excesso =
+               (1 + excesso_cdi_acumulado) /
+               cummax(1 + excesso_cdi_acumulado) - 1)
+    dados_diarios = fundos_retornos_historico %>%
+      mutate(mes = floor_date(data, unit = "month")) %>%
+      filter(nome_plot == nome_fundo,
+             is.finite(excesso_cdi_liq), n_du == 1) %>%
+      semi_join(meses_fundo %>% select(mes), by = "mes")
+    janela_fundo = paste0(nrow(meses_fundo),
+                          " meses completos disponíveis na janela; ",
+                          "não comparável ao score")
+  }
+
+  dados_mensais = dados_mensais %>%
+    mutate(
+      indice_mes = lubridate::year(mes) * 12L + lubridate::month(mes),
+      segmento = cumsum(indice_mes - lag(indice_mes, default = first(indice_mes) - 1L) != 1L)
+    )
+  dados_diarios = dados_diarios %>%
+    mutate(excesso_cdi_pb = 10000 * excesso_cdi_liq)
+
+  retornos = dados_diarios$excesso_cdi_pb
+  desvio_populacional = sqrt(mean((retornos - mean(retornos))^2))
+  assimetria = if (desvio_populacional > 0) {
+    mean(((retornos - mean(retornos)) / desvio_populacional)^3)
+  } else NA_real_
+  curtose_excesso = if (desvio_populacional > 0) {
+    mean(((retornos - mean(retornos)) / desvio_populacional)^4) - 3
+  } else NA_real_
+
+  grafico_trajetoria_fundo = ggplot(
+    dados_mensais, aes(x = mes, y = excesso_cdi_acumulado,
+                       group = segmento)
+  ) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
+    geom_line(color = "#1F77B4", linewidth = 0.8) +
+    scale_y_continuous(labels = percent_format(accuracy = 0.1,
+                                              decimal.mark = ",")) +
+    labs(title = "Excesso acumulado sobre o CDI", x = NULL,
+         y = "Excesso acumulado") +
+    theme_minimal(base_size = 10)
+
+  grafico_drawdown_fundo = ggplot(
+    dados_mensais, aes(x = mes, y = drawdown_excesso,
+                       group = segmento)
+  ) +
+    geom_hline(yintercept = 0, color = "grey70") +
+    geom_area(fill = "#B35850", alpha = 0.7) +
+    scale_y_continuous(labels = percent_format(accuracy = 0.1,
+                                              decimal.mark = ",")) +
+    labs(title = "Drawdown do excesso sobre o CDI", x = NULL,
+         y = "Queda desde o pico") +
+    theme_minimal(base_size = 10)
+
+  grafico_distribuicao_fundo = ggplot(
+    dados_diarios, aes(x = excesso_cdi_pb)
+  ) +
+    geom_histogram(aes(y = after_stat(density)), bins = 35,
+                   fill = "#9ECAE1", color = "white") +
+    geom_density(color = "#08519C", linewidth = 0.9) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    labs(title = "Distribuição diária do excesso sobre o CDI",
+         subtitle = "Barras = observações; curva = densidade estimada",
+         x = "Excesso diário (pontos-base)", y = "Densidade") +
+    theme_minimal(base_size = 10)
+
+  painel_fundo = patchwork::wrap_plots(
+    grafico_trajetoria_fundo,
+    grafico_drawdown_fundo,
+    grafico_distribuicao_fundo,
+    ncol = 1,
+    heights = c(1, 1, 1.25)
+  ) +
+    patchwork::plot_annotation(
+      title = paste0(if (tem_score) {
+        sprintf("%02d", indice_fundos$ranking_geral[[i]])
+      } else "Sem score", " | ", nome_fundo),
+      subtitle = paste0(indice_fundos$status_quantitativo[[i]],
+                        " | ", janela_fundo),
+      caption = paste0(
+        "Distribuição: ", length(retornos), " dias; ",
+        sprintf("%.1f%%", 100 * mean(retornos < 0)),
+        " abaixo do CDI; assimetria ", sprintf("%.2f", assimetria),
+        "; excesso de curtose ", sprintf("%.2f", curtose_excesso),
+        ". Indicadores descritivos, não critérios de aprovação."
+      )
+    )
+
+  ggsave(
+    filename = file.path(path_fundos_figures, indice_fundos$arquivo[[i]]),
+    plot = painel_fundo,
+    width = 11, height = 10, dpi = 200, bg = "white"
+  )
+}
+
+write_csv2(indice_fundos, file.path(path_fundos_figures, "indice.csv"))
 
 # ------------------------------------------------------------
 # Workbook
