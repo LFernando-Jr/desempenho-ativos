@@ -74,4 +74,6 @@ as sugestões automáticas são exportadas separadamente em `data/intermediate/`
 - `output/reports/`: planilhas finais versionadas;
 - `legacy/`: versões anteriores preservadas para consulta.
 
+A planilha final contém quatro abas `Pilar` (retorno, consistência, risco e custo) que abrem cada métrica em valor, cálculo, z-score, nota, peso, contribuição, nota e quartil do pilar. O `Dicionário` define os campos; a abertura é auditável e não altera o score.
+
 Os scripts canônicos mantêm a metodologia da versão de 36 meses. A abordagem paralela de `selecao_credito.R` permanece em `legacy/` e não entra silenciosamente no score atual.

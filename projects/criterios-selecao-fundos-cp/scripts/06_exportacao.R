@@ -882,6 +882,20 @@ ranking_xlsx = priorizacao_qualitativa %>%
     nivel_redundancia_carteira
   )
 
+source(
+  file = "projects/criterios-selecao-fundos-cp/scripts/abertura_score.R",
+  encoding = "UTF-8"
+)
+abertura_score_xlsx = cria_abertura_score(priorizacao_qualitativa)
+abertura_retorno_xlsx = abertura_score_xlsx %>%
+  filter(pilar == "Retorno") %>% select(-pilar)
+abertura_consistencia_xlsx = abertura_score_xlsx %>%
+  filter(pilar == "Consistência") %>% select(-pilar)
+abertura_risco_xlsx = abertura_score_xlsx %>%
+  filter(pilar == "Risco") %>% select(-pilar)
+abertura_custo_xlsx = abertura_score_xlsx %>%
+  filter(pilar == "Custo") %>% select(-pilar)
+
 metodologia_xlsx = tibble(
   item = c(
     "Janela do score",
@@ -889,6 +903,7 @@ metodologia_xlsx = tibble(
     "Excesso anualizado sobre CDI",
     "Janela móvel de 36 meses",
     "Conversão das métricas",
+    "Abertura por pilar",
     "Pesos dos pilares",
     "Consistência",
     "Custo",
@@ -907,6 +922,7 @@ metodologia_xlsx = tibble(
     "Produto dos excessos mensais geométricos elevado a 12/36, menos 1; não é spread de crédito ou diferença simples entre taxas anualizadas",
     "Nas fichas individuais, cada ponto usa 36 meses completos e consecutivos do histórico; diagnóstico fora do score",
     "Z-score robusto com MAD padrão, limite [-4,4] e logística 0-100",
+    "Cada aba Pilar mostra valor da métrica, cálculo, z orientado e truncado usado na nota, nota, peso, contribuição, nota do pilar e quartil do pilar; Q1 é o melhor quartil entre elegíveis",
     "Retorno 30%; consistência 25%; risco 20%; custo 25%",
     "Hit rates mensal 40%, 6 meses 20% e 12 meses 40%",
     "Taxa 60% e razão excesso líquido/taxa 40%",
@@ -929,6 +945,10 @@ wb = createWorkbook(creator = "Análise de fundos high grade")
 
 abas = c(
   "Ranking",
+  "Pilar Retorno",
+  "Pilar Consistência",
+  "Pilar Risco",
+  "Pilar Custo",
   "Todos os Fundos",
   "Pares Redundância",
   "Sensib. Redundância",
@@ -949,6 +969,10 @@ walk(.x = abas, .f = ~ addWorksheet(wb = wb, sheetName = .x, gridLines = FALSE))
 
 dados_abas = list(
   "Ranking" = ranking_xlsx,
+  "Pilar Retorno" = abertura_retorno_xlsx,
+  "Pilar Consistência" = abertura_consistencia_xlsx,
+  "Pilar Risco" = abertura_risco_xlsx,
+  "Pilar Custo" = abertura_custo_xlsx,
   "Todos os Fundos" = metricas_todos_fundos,
   "Pares Redundância" = pares_redundancia,
   "Sensib. Redundância" = sensibilidade_limiares,
@@ -975,6 +999,7 @@ estilo_percentual = createStyle(numFmt = "0.00%")
 estilo_decimal = createStyle(numFmt = "0.00")
 estilo_data = createStyle(numFmt = "mmm/yyyy")
 estilo_dicionario = createStyle(wrapText = TRUE, valign = "center")
+estilo_calculo = createStyle(wrapText = TRUE, valign = "center")
 
 iwalk(
   .x = dados_abas,
@@ -993,7 +1018,7 @@ iwalk(
       wb = wb,
       sheet = aba,
       firstActiveRow = 2,
-      firstActiveCol = 2
+      firstActiveCol = if (str_starts(aba, "Pilar ")) 3 else 2
     )
 
     if (aba == "Dicionário") {
@@ -1009,6 +1034,20 @@ iwalk(
       setRowHeights(
         wb = wb, sheet = aba,
         rows = seq.int(2, nrow(dados) + 1), heights = 32
+      )
+    } else if (str_starts(aba, "Pilar ")) {
+      setColWidths(
+        wb = wb, sheet = aba, cols = seq_len(ncol(dados)),
+        widths = c(10, 32, 30, 26, 18, 16, 18, 16, 16, 18, 16, 16, 18, 75)
+      )
+      addStyle(
+        wb = wb, sheet = aba, style = estilo_calculo,
+        rows = seq.int(2, nrow(dados) + 1), cols = which(names(dados) == "calculo_metrica"),
+        gridExpand = TRUE, stack = TRUE
+      )
+      setRowHeights(
+        wb = wb, sheet = aba,
+        rows = seq.int(2, nrow(dados) + 1), heights = 30
       )
     } else {
       setColWidths(
@@ -1086,6 +1125,41 @@ iwalk(
           cols = colunas_datas,
           gridExpand = TRUE,
           stack = TRUE
+        )
+      }
+
+      if (str_starts(aba, "Pilar ")) {
+        addStyle(
+          wb = wb, sheet = aba, style = estilo_decimal,
+          rows = linhas_dados,
+          cols = which(nomes_colunas == "z_usado_na_nota"),
+          gridExpand = TRUE, stack = TRUE
+        )
+        addStyle(
+          wb = wb, sheet = aba, style = estilo_nota,
+          rows = linhas_dados,
+          cols = which(nomes_colunas == "contribuicao_pilar"),
+          gridExpand = TRUE, stack = TRUE
+        )
+        addStyle(
+          wb = wb, sheet = aba, style = estilo_percentual,
+          rows = linhas_dados,
+          cols = which(nomes_colunas == "peso_no_pilar"),
+          gridExpand = TRUE, stack = TRUE
+        )
+        linhas_percentuais = which(dados$unidade_metrica == "Percentual") + 1
+        addStyle(
+          wb = wb, sheet = aba, style = estilo_percentual,
+          rows = linhas_percentuais,
+          cols = which(nomes_colunas == "valor_metrica"),
+          gridExpand = TRUE, stack = TRUE
+        )
+        linhas_razao = which(dados$unidade_metrica == "Razão") + 1
+        addStyle(
+          wb = wb, sheet = aba, style = estilo_decimal,
+          rows = linhas_razao,
+          cols = which(nomes_colunas == "valor_metrica"),
+          gridExpand = TRUE, stack = TRUE
         )
       }
     }

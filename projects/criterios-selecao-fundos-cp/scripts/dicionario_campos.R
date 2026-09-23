@@ -8,6 +8,7 @@ cria_dicionario_campos = function(dados_abas) {
     alertas_relativos = "Alertas de drawdown ou cauda entre os 10% piores da amostra; não são vetos.",
     aprovado_quantitativo = "Indica aprovação com margem pela régua quantitativa.",
     autocorrelacao_lag1 = "Correlação do excesso mensal com o excesso do mês anterior.",
+    calculo_metrica = "Regra que transforma a série ou dado cadastral no valor da métrica. Não é uma fórmula editável da planilha.",
     benchmark = "Índice comparativo usado na análise de afinidade.",
     benchmark_maior_correlacao = "Benchmark com maior correlação de excessos mensais com o fundo.",
     benchmark_menor_tracking_error = "Benchmark com menor dispersão do retorno relativo mensal ao fundo.",
@@ -20,6 +21,7 @@ cria_dicionario_campos = function(dados_abas) {
     correlacao_media_intracluster = "Média das correlações entre fundos do mesmo cluster.",
     correlacao_media_pares = "Média das correlações do fundo com os demais pares elegíveis.",
     correlacao_mediana_pares = "Mediana das correlações do fundo com os demais pares elegíveis.",
+    contribuicao_pilar = "Nota da métrica multiplicada por seu peso dentro do pilar, em pontos.",
     criterio_priorizacao = "Motivo específico da entrada do fundo na fila de diligência.",
     data_fim_score = "Último mês da janela comum usada no score.",
     data_inicio_intervalo = "Data anterior à primeira cota usada para compor o retorno mensal.",
@@ -94,19 +96,24 @@ cria_dicionario_campos = function(dados_abas) {
     nota_custo = "Nota do pilar de custo observável, de 0 a 100.",
     nota_final = "Média ponderada dos pilares: retorno 30%, consistência 25%, risco 20% e custo 25%.",
     nota_minima_pilar = "Menor nota entre retorno, consistência, risco e custo.",
+    nota_metrica = "Nota robusta de 0 a 100 da métrica da linha, após transformação logística do z-score.",
+    nota_pilar = "Soma das contribuições das métricas do pilar, em escala de 0 a 100.",
     nota_razao_excesso_taxa = "Nota robusta da razão entre excesso líquido anualizado e taxa de administração.",
     nota_retorno = "Nota do pilar de retorno, de 0 a 100.",
     nota_risco = "Nota do pilar de risco, de 0 a 100.",
     nota_taxa = "Nota robusta da taxa de administração; taxa menor recebe nota maior.",
     observacao_qualitativa = "Observação registrada manualmente na avaliação qualitativa.",
+    origem_dado = "Fonte do dado empregado no cálculo da métrica: cotas, CDI, excessos mensais ou cadastro.",
     pilar_abaixo_minimo = "Indica que alguma nota de pilar ficou abaixo do piso de 30.",
     pior_mes = "Menor excesso mensal sobre CDI observado na janela do score.",
     primeira_data = "Primeira data de cota observada no mês.",
     primeira_data_cdi = "Primeira data de CDI observada no mês.",
     primeiro_mes = "Primeiro mês disponível do fundo no histórico.",
     prioridade_analise_qualitativa = "Ordem de diligência entre aprovados quantitativos e casos da fronteira.",
+    peso_no_pilar = "Peso da métrica na nota do respectivo pilar; os pesos do pilar somam 100%.",
     quartil = "Quartil descritivo do score associado à trajetória histórica.",
     quartil_score = "Quartil descritivo da nota final entre fundos elegíveis.",
+    quartil_pilar = "Quartil da nota do pilar entre os fundos elegíveis, com Q1 como melhor quartil. Não é quartil da métrica individual.",
     ranking_geral = "Posição decrescente da nota final entre os fundos elegíveis.",
     razao_excesso_taxa = "Excesso líquido anualizado sobre CDI dividido pela taxa de administração anual.",
     red_flags_absolutos = "Motivo de veto quantitativo absoluto; nesta versão, excesso anualizado não positivo.",
@@ -120,6 +127,7 @@ cria_dicionario_campos = function(dados_abas) {
     status_priorizacao = "Estado da fila de diligência, calculado após a régua quantitativa.",
     status_qualitativo = "Conclusão qualitativa registrada manualmente; vazio não significa aprovação.",
     status_quantitativo = "Classificação pela régua de aprovação, fronteira e red flag.",
+    sentido_melhor = "Indica se valor maior ou menor da métrica recebe z-score favorável.",
     taxa_adm_aa = "Taxa anual de administração do cadastro; fração decimal, sem performance ou taxa da casa.",
     taxa_requer_revisao = "Alerta de taxa extrema pelo z robusto do log da taxa; não entra no score como veto.",
     tipo_par = "Categoria do par: candidatos, posições atuais ou candidato versus posição atual.",
@@ -129,8 +137,11 @@ cria_dicionario_campos = function(dados_abas) {
     ultimo_dia_calendario = "Último dia calendário do mês.",
     ultimo_mes = "Último mês disponível do fundo no histórico.",
     valor = "Valor da estatística ou métrica nomeada na mesma linha; unidade depende do indicador.",
+    valor_metrica = "Valor objetivo da métrica após cálculo a partir dos dados; a unidade está na coluna unidade_metrica.",
+    unidade_metrica = "Unidade do valor da métrica na mesma linha: percentual ou razão.",
     volatilidade_excesso_aa = "Desvio-padrão dos excessos mensais sobre CDI multiplicado por raiz de 12.",
     z_robusto_log_taxa = "Distância robusta do log da taxa de administração à mediana das taxas.",
+    z_usado_na_nota = "Z-score robusto orientado para que maior seja melhor e truncado em [-4, 4], exatamente o valor usado na nota logística.",
     zona_fronteira = "Indica nota de 52 a menos de 58, ou nota maior com pilar abaixo de 30."
   )
 
@@ -142,6 +153,12 @@ cria_dicionario_campos = function(dados_abas) {
       "Correlação dos excessos mensais do fundo na linha com ",
       campos[matriz_fundo], ", na janela comum de 36 meses."
     )
+    if (str_starts(aba, "Pilar ")) {
+      definicao[campos == "metrica"] =
+        "Componente da nota do pilar indicado pela aba. Cada fundo ocupa uma linha por componente."
+      definicao[campos == "nota_pilar"] =
+        "Soma das contribuições das métricas deste pilar, em escala de 0 a 100."
+    }
 
     tibble(
       aba = aba,
@@ -149,10 +166,13 @@ cria_dicionario_campos = function(dados_abas) {
       definicao = definicao,
       unidade = case_when(
         matriz_fundo ~ "Correlação (-1 a 1)",
+        campos %in% c("contribuicao_pilar") ~ "Pontos (0 a 100)",
+        campos %in% c("peso_no_pilar") ~ "Percentual",
+        campos %in% c("valor_metrica") ~ "Conforme unidade_metrica",
         str_detect(campos, "^(nota_|nota_final$)") ~ "Pontos (0 a 100)",
         str_detect(campos, "^(n_|k$|menor_cluster$|maior_cluster$|defasagem_meses$|dias_sem_cdi_no_fim$|meses_)") ~ "Contagem",
         str_detect(campos, "^(ret_|excesso_|hit_rate|volatilidade|drawdown|max_drawdown|pior_mes|media_tres|taxa_adm|tracking_error|menor_tracking_error)") ~ "Percentual",
-        str_detect(campos, "(correlacao|silhueta|adjusted_rand|z_robusto|razao_excesso_taxa|limiar)") ~ "Razão ou correlação",
+        str_detect(campos, "(correlacao|silhueta|adjusted_rand|z_robusto|z_usado_na_nota|razao_excesso_taxa|limiar)") ~ "Razão ou correlação",
         str_detect(campos, "(^data|_data$|^primeira_data$|^ultima_data$|^mes$|^mes_fim$|_mes$|^primeiro_mes$|^ultimo_mes$|^inicio_|^fim_)") ~ "Data ou mês",
         campos == "valor" ~ "Conforme indicador",
         campos %in% c("aprovado_quantitativo", "zona_fronteira", "pilar_abaixo_minimo", "elegivel_ranking", "elegivel_score_36m", "envolve_carteira_atual", "fundo_a_carteira", "fundo_b_carteira", "mes_completo", "mes_encerrado", "mes_seguinte_observado", "revisar", "taxa_requer_revisao") ~ "Sim/Não",
@@ -167,6 +187,7 @@ cria_dicionario_campos = function(dados_abas) {
       ),
       papel = case_when(
         aba == "Ranking" ~ "Score, classificação ou diligência",
+        str_starts(aba, "Pilar ") ~ "Abertura auditável do score; não acrescenta critério",
         aba == "Todos os Fundos" ~ "Cobertura, elegibilidade ou métrica",
         aba %in% c("Pares Redundância", "Sensib. Redundância", "Distrib. Correlações", "Matriz Correlação") ~ "Diagnóstico de redundância; não entra no score",
         str_detect(aba, "Clusters") ~ "Diagnóstico de clusters; não entra no score",
