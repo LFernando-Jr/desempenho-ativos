@@ -367,7 +367,7 @@ base_afinidade_plot = afinidade_benchmarks %>%
       levels = c("IDA LIQ-DI", "IDA-DI", "IRF-M 1")
     ),
     rotulo = paste0(
-      "ρ ",
+      "Corr. ",
       number(correlacao, accuracy = 0.01, decimal.mark = ","),
       "\nTE ",
       percent(tracking_error_aa, accuracy = 0.1, decimal.mark = ",")
