@@ -20,7 +20,10 @@ figuras_canonicas = c(
   "heatmap_correlacao_excessos_mensais_36m.png",
   "dendrograma_fundos_excessos_mensais_36m.png",
   "grafico_ranking_fundos_36m.png",
-  "grafico_pilares_score_36m.png",
+  "grafico_score_retorno_36m.png",
+  "grafico_score_consistencia_36m.png",
+  "grafico_score_risco_36m.png",
+  "grafico_score_custo_36m.png",
   "heatmap_afinidade_benchmarks_36m.png",
   "grafico_historico_completo_excesso_cdi.png"
 )
@@ -268,55 +271,63 @@ ggsave(
   dpi = 300
 )
 
-base_blocos_plot = priorizacao_qualitativa %>%
-  select(
-    nome_plot,
-    nota_retorno,
-    nota_consistencia,
-    nota_risco,
-    nota_custo
-  ) %>%
-  pivot_longer(
-    cols = starts_with("nota_"),
-    names_to = "bloco",
-    values_to = "nota"
-  ) %>%
-  mutate(
-    bloco = recode(
-      bloco,
-      "nota_retorno" = "Retorno",
-      "nota_consistencia" = "Consistência",
-      "nota_risco" = "Risco",
-      "nota_custo" = "Custo"
-    )
-  )
+# Os quatro pilares usam a mesma ordem do ranking geral, não a nota do pilar.
+ordem_ranking = priorizacao_qualitativa %>%
+  arrange(ranking_geral) %>%
+  pull(nome_plot)
 
-grafico_blocos = ggplot(
-  data = base_blocos_plot,
-  mapping = aes(x = reorder(nome_plot, nota), y = nota)
-) +
-  geom_col(fill = "#1F77B4", width = 0.75) +
-  coord_flip() +
-  facet_wrap(facets = vars(bloco), ncol = 2) +
-  scale_y_continuous(limits = c(0, 100)) +
-  labs(
-    title = "Abertura dos pilares do score",
-    x = NULL,
-    y = "Nota"
-  ) +
-  theme_minimal(base_size = 9) +
-  theme(
-    panel.grid.major.y = element_blank(),
-    plot.title = element_text(face = "bold")
-  )
+base_pilares_plot = priorizacao_qualitativa %>%
+  mutate(nome_plot = factor(nome_plot, levels = rev(ordem_ranking)))
 
-ggsave(
-  filename = file.path(path_figures, "grafico_pilares_score_36m.png"),
-  plot = grafico_blocos,
-  width = 16,
-  height = max(12, nrow(priorizacao_qualitativa) * 0.35),
-  dpi = 300
+pilares_score = c(
+  retorno = "nota_retorno",
+  consistencia = "nota_consistencia",
+  risco = "nota_risco",
+  custo = "nota_custo"
 )
+
+titulos_pilares = c(
+  retorno = "Retorno",
+  consistencia = "Consistência",
+  risco = "Risco",
+  custo = "Custo"
+)
+
+for (pilar in names(pilares_score)) {
+  coluna_nota = pilares_score[[pilar]]
+  titulo_pilar = titulos_pilares[[pilar]]
+
+  grafico_pilar = ggplot(
+    data = base_pilares_plot,
+    mapping = aes(x = nome_plot, y = .data[[coluna_nota]])
+  ) +
+    geom_col(fill = "#1F77B4", width = 0.75) +
+    coord_flip() +
+    scale_y_continuous(limits = c(0, 100)) +
+    labs(
+      title = paste("Score de", titulo_pilar),
+      subtitle = "Fundos na ordem do ranking geral",
+      x = NULL,
+      y = "Nota"
+    ) +
+    theme_minimal(base_size = 10) +
+    theme(
+      panel.grid.major.y = element_blank(),
+      plot.title = element_text(face = "bold")
+    )
+
+  ggsave(
+    filename = file.path(
+      path_figures,
+      paste0("grafico_score_", pilar, "_36m.png")
+    ),
+    plot = grafico_pilar,
+    width = 12,
+    height = max(9, nrow(base_pilares_plot) * 0.25),
+    dpi = 300,
+    bg = "white"
+  )
+}
 
 # ------------------------------------------------------------
 # Afinidade com benchmarks
