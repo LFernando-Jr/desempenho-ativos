@@ -1,54 +1,54 @@
 ranking_geral;nome_plot;status_quantitativo;meses_completos;arquivo
-1;Tivio Institucional 15;Aprovado quantitativo com margem;36;fundo_01.png
-2;Daycoval Classic 30;Aprovado quantitativo com margem;36;fundo_02.png
-3;BNP Paribas Rubi;Aprovado quantitativo com margem;36;fundo_03.png
-4;SulAmérica Crédito ESG;Aprovado quantitativo com margem;36;fundo_04.png
-5;Compass Yield 30;Aprovado quantitativo com margem;36;fundo_05.png
-6;SulAmérica Crédito Ativo;Aprovado quantitativo com margem;36;fundo_06.png
-7;BTG Pactual Crédito Corporativo I;Aprovado quantitativo com margem;36;fundo_07.png
-8;Bocom BBM Corporate Credit II;Aprovado quantitativo com margem;36;fundo_08.png
-9;Porto Seguro Ipê;Aprovado quantitativo com margem;36;fundo_09.png
-10;JGP Corporate FEEDER II;Zona cinzenta: nota próxima ao corte;36;fundo_10.png
-11;Sparta Max Advisory;Zona cinzenta: nota próxima ao corte;36;fundo_11.png
-12;Polo Crédito Corporativo Advisory;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;fundo_12.png
-13;Occam Crédito Corporativo 30;Zona cinzenta: nota próxima ao corte;36;fundo_13.png
-14;Sparta Top;Zona cinzenta: nota próxima ao corte;36;fundo_14.png
-15;JGP Crédito Advisory;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;fundo_15.png
-16;Root Capital Crédito HG Plus;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;fundo_16.png
-17;Novus Crédito;Zona cinzenta: nota próxima ao corte;36;fundo_17.png
-18;Selection Light;Zona cinzenta: nota próxima ao corte;36;fundo_18.png
-19;BNP Paribas Match Plus 30 Advisory;Zona cinzenta: nota próxima ao corte;36;fundo_19.png
-20;BOCOM BBM Corporate Credit Plus MULT;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;fundo_20.png
-21;Safra Grand Vitesse;Zona cinzenta: nota próxima ao corte;36;fundo_21.png
-22;Vinland Crédito;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;fundo_22.png
-23;Principal Claritas;Não aprovado quantitativamente;36;fundo_23.png
-24;Atena Yield D30;Não aprovado quantitativamente;36;fundo_24.png
-25;Riza Lotus Plus Advisory;Não aprovado quantitativamente;36;fundo_25.png
-26;Absolute Creta Advisory;Não aprovado quantitativamente;36;fundo_26.png
-27;Arx Vinson Advisory;Não aprovado quantitativamente;36;fundo_27.png
-28;Iridium Titan Advisory;Não aprovado quantitativamente;36;fundo_28.png
-29;Safra Vitesse;Não aprovado quantitativamente;36;fundo_29.png
-30;XP Corporate Light;Não aprovado quantitativamente;36;fundo_30.png
-31;Integral;Não aprovado quantitativamente;36;fundo_31.png
-32;AF Invest Geraes 30;Não aprovado quantitativamente;36;fundo_32.png
-33;Plural Crédito Corporativo II;Não aprovado quantitativamente;36;fundo_33.png
-34;Safra Polaris;Não aprovado quantitativamente;36;fundo_34.png
-35;SPX Seahawk Advisory;Não aprovado quantitativamente;36;fundo_35.png
-36;Ibiuna Credit;Não aprovado quantitativamente;36;fundo_36.png
-37;Augme 30 Advisory;Não aprovado quantitativamente;36;fundo_37.png
-38;AZ Quest Altro Advisory;Não aprovado quantitativamente;36;fundo_38.png
-39;Mag High Grade Plus 30;Não aprovado quantitativamente;36;fundo_39.png
-40;Western Asset Total Credit Plus;Não aprovado quantitativamente;36;fundo_40.png
-41;Valora Absolute;Não aprovado quantitativamente;36;fundo_41.png
-42;Inter Premium;Não aprovado quantitativamente;36;fundo_42.png
-43;XP Corporate Top;Não aprovado quantitativamente;36;fundo_43.png
-44;XP Corporate Plus;Não aprovado quantitativamente;36;fundo_44.png
-45;ARX Everest Advisory;Não aprovado quantitativamente;36;fundo_45.png
-46;BB Asset;Reprovado por red flag absoluto;36;fundo_46.png
-47;Capitânia Premium 45;Reprovado por red flag absoluto;36;fundo_47.png
-NA;Augme 30 II;Sem score: Há meses incompletos na janela comum;35;fundo_sem_score_01.png
-NA;Bradesco Ultra II;Sem score: Histórico inferior a 36 meses;26;fundo_sem_score_02.png
-NA;Legacy Capital Credit D15;Sem score: Histórico inferior a 36 meses;13;fundo_sem_score_03.png
-NA;Persevera Yield;Sem score: Histórico inferior a 36 meses;35;fundo_sem_score_04.png
-NA;Tríade;Sem score: Histórico inferior a 36 meses;26;fundo_sem_score_05.png
-NA;Vinland Crédito 10;Sem score: Histórico inferior a 36 meses;31;fundo_sem_score_06.png
+1;Tivio Institucional 15;Aprovado quantitativo com margem;36;01_tivio_institucional_15.png
+2;Daycoval Classic 30;Aprovado quantitativo com margem;36;02_daycoval_classic_30.png
+3;BNP Paribas Rubi;Aprovado quantitativo com margem;36;03_bnp_paribas_rubi.png
+4;SulAmérica Crédito ESG;Aprovado quantitativo com margem;36;04_sulamerica_credito_esg.png
+5;Compass Yield 30;Aprovado quantitativo com margem;36;05_compass_yield_30.png
+6;SulAmérica Crédito Ativo;Aprovado quantitativo com margem;36;06_sulamerica_credito_ativo.png
+7;BTG Pactual Crédito Corporativo I;Aprovado quantitativo com margem;36;07_btg_pactual_credito_corporativo_i.png
+8;Bocom BBM Corporate Credit II;Aprovado quantitativo com margem;36;08_bocom_bbm_corporate_credit_ii.png
+9;Porto Seguro Ipê;Aprovado quantitativo com margem;36;09_porto_seguro_ipe.png
+10;JGP Corporate FEEDER II;Zona cinzenta: nota próxima ao corte;36;10_jgp_corporate_feeder_ii.png
+11;Sparta Max Advisory;Zona cinzenta: nota próxima ao corte;36;11_sparta_max_advisory.png
+12;Polo Crédito Corporativo Advisory;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;12_polo_credito_corporativo_advisory.png
+13;Occam Crédito Corporativo 30;Zona cinzenta: nota próxima ao corte;36;13_occam_credito_corporativo_30.png
+14;Sparta Top;Zona cinzenta: nota próxima ao corte;36;14_sparta_top.png
+15;JGP Crédito Advisory;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;15_jgp_credito_advisory.png
+16;Root Capital Crédito HG Plus;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;16_root_capital_credito_hg_plus.png
+17;Novus Crédito;Zona cinzenta: nota próxima ao corte;36;17_novus_credito.png
+18;Selection Light;Zona cinzenta: nota próxima ao corte;36;18_selection_light.png
+19;BNP Paribas Match Plus 30 Advisory;Zona cinzenta: nota próxima ao corte;36;19_bnp_paribas_match_plus_30_advisory.png
+20;BOCOM BBM Corporate Credit Plus MULT;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;20_bocom_bbm_corporate_credit_plus_mult.png
+21;Safra Grand Vitesse;Zona cinzenta: nota próxima ao corte;36;21_safra_grand_vitesse.png
+22;Vinland Crédito;Zona cinzenta: nota próxima ao corte e pilar abaixo do mínimo;36;22_vinland_credito.png
+23;Principal Claritas;Não aprovado quantitativamente;36;23_principal_claritas.png
+24;Atena Yield D30;Não aprovado quantitativamente;36;24_atena_yield_d30.png
+25;Riza Lotus Plus Advisory;Não aprovado quantitativamente;36;25_riza_lotus_plus_advisory.png
+26;Absolute Creta Advisory;Não aprovado quantitativamente;36;26_absolute_creta_advisory.png
+27;Arx Vinson Advisory;Não aprovado quantitativamente;36;27_arx_vinson_advisory.png
+28;Iridium Titan Advisory;Não aprovado quantitativamente;36;28_iridium_titan_advisory.png
+29;Safra Vitesse;Não aprovado quantitativamente;36;29_safra_vitesse.png
+30;XP Corporate Light;Não aprovado quantitativamente;36;30_xp_corporate_light.png
+31;Integral;Não aprovado quantitativamente;36;31_integral.png
+32;AF Invest Geraes 30;Não aprovado quantitativamente;36;32_af_invest_geraes_30.png
+33;Plural Crédito Corporativo II;Não aprovado quantitativamente;36;33_plural_credito_corporativo_ii.png
+34;Safra Polaris;Não aprovado quantitativamente;36;34_safra_polaris.png
+35;SPX Seahawk Advisory;Não aprovado quantitativamente;36;35_spx_seahawk_advisory.png
+36;Ibiuna Credit;Não aprovado quantitativamente;36;36_ibiuna_credit.png
+37;Augme 30 Advisory;Não aprovado quantitativamente;36;37_augme_30_advisory.png
+38;AZ Quest Altro Advisory;Não aprovado quantitativamente;36;38_az_quest_altro_advisory.png
+39;Mag High Grade Plus 30;Não aprovado quantitativamente;36;39_mag_high_grade_plus_30.png
+40;Western Asset Total Credit Plus;Não aprovado quantitativamente;36;40_western_asset_total_credit_plus.png
+41;Valora Absolute;Não aprovado quantitativamente;36;41_valora_absolute.png
+42;Inter Premium;Não aprovado quantitativamente;36;42_inter_premium.png
+43;XP Corporate Top;Não aprovado quantitativamente;36;43_xp_corporate_top.png
+44;XP Corporate Plus;Não aprovado quantitativamente;36;44_xp_corporate_plus.png
+45;ARX Everest Advisory;Não aprovado quantitativamente;36;45_arx_everest_advisory.png
+46;BB Asset;Reprovado por red flag absoluto;36;46_bb_asset.png
+47;Capitânia Premium 45;Reprovado por red flag absoluto;36;47_capitania_premium_45.png
+NA;Augme 30 II;Sem score: Há meses incompletos na janela comum;35;sem_score_augme_30_ii.png
+NA;Bradesco Ultra II;Sem score: Histórico inferior a 36 meses;26;sem_score_bradesco_ultra_ii.png
+NA;Legacy Capital Credit D15;Sem score: Histórico inferior a 36 meses;13;sem_score_legacy_capital_credit_d15.png
+NA;Persevera Yield;Sem score: Histórico inferior a 36 meses;35;sem_score_persevera_yield.png
+NA;Tríade;Sem score: Histórico inferior a 36 meses;26;sem_score_triade.png
+NA;Vinland Crédito 10;Sem score: Histórico inferior a 36 meses;31;sem_score_vinland_credito_10.png

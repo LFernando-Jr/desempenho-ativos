@@ -562,6 +562,14 @@ ggsave(
 
 # Fichas diagnósticas individuais para todo o universo cadastrado.
 # Não alteram nota, classificação ou prioridade de diligência.
+nome_para_arquivo = function(nome) {
+  nome %>%
+    stringi::stri_trans_general("Latin-ASCII") %>%
+    str_to_lower() %>%
+    str_replace_all("[^a-z0-9]+", "_") %>%
+    str_replace_all("^_|_$", "")
+}
+
 indice_elegiveis = priorizacao_qualitativa %>%
   arrange(ranking_geral) %>%
   transmute(
@@ -569,13 +577,14 @@ indice_elegiveis = priorizacao_qualitativa %>%
     nome_plot,
     status_quantitativo,
     meses_completos = 36L,
-    arquivo = sprintf("fundo_%02d.png", ranking_geral)
+    arquivo = sprintf("%02d_%s.png", ranking_geral,
+                      nome_para_arquivo(nome_plot))
   )
 
 indice_inelegiveis = universo_elegibilidade %>%
   filter(!elegivel_score_36m) %>%
   arrange(nome_plot) %>%
-  mutate(arquivo = sprintf("fundo_sem_score_%02d.png", row_number())) %>%
+  mutate(arquivo = paste0("sem_score_", nome_para_arquivo(nome_plot), ".png")) %>%
   transmute(
     ranking_geral = NA_integer_,
     nome_plot,
@@ -613,8 +622,21 @@ meses_validos_fichas = fundos_retornos_historico %>%
 
 stopifnot(
   all(table(fundos_mensais_score$nome_plot) == 36L),
-  setequal(indice_fundos$nome_plot, universo_elegibilidade$nome_plot)
+  setequal(indice_fundos$nome_plot, universo_elegibilidade$nome_plot),
+  !anyDuplicated(indice_fundos$arquivo)
 )
+
+arquivos_antigos_fundos = setdiff(
+  list.files(path_fundos_figures, pattern = "[.]png$"),
+  indice_fundos$arquivo
+)
+if (length(arquivos_antigos_fundos) > 0) {
+  warning(
+    "Há fichas antigas fora do índice atual: ",
+    paste(arquivos_antigos_fundos, collapse = " | "),
+    ". Revise-as antes de publicar os outputs."
+  )
+}
 
 for (i in seq_len(nrow(indice_fundos))) {
   nome_fundo = indice_fundos$nome_plot[[i]]
