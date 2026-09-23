@@ -271,13 +271,7 @@ ggsave(
   dpi = 300
 )
 
-# Os quatro pilares usam a mesma ordem do ranking geral, não a nota do pilar.
-ordem_ranking = priorizacao_qualitativa %>%
-  arrange(ranking_geral) %>%
-  pull(nome_plot)
-
-base_pilares_plot = priorizacao_qualitativa %>%
-  mutate(nome_plot = factor(nome_plot, levels = rev(ordem_ranking)))
+# Cada pilar ordena os fundos pela sua própria nota, da maior para a menor.
 
 pilares_score = c(
   retorno = "nota_retorno",
@@ -296,9 +290,12 @@ titulos_pilares = c(
 for (pilar in names(pilares_score)) {
   coluna_nota = pilares_score[[pilar]]
   titulo_pilar = titulos_pilares[[pilar]]
+  base_pilar_plot = priorizacao_qualitativa %>%
+    arrange(desc(.data[[coluna_nota]]), nome_plot) %>%
+    mutate(nome_plot = factor(nome_plot, levels = rev(nome_plot)))
 
   grafico_pilar = ggplot(
-    data = base_pilares_plot,
+    data = base_pilar_plot,
     mapping = aes(x = nome_plot, y = .data[[coluna_nota]])
   ) +
     geom_col(fill = "#1F77B4", width = 0.75) +
@@ -306,7 +303,7 @@ for (pilar in names(pilares_score)) {
     scale_y_continuous(limits = c(0, 100)) +
     labs(
       title = paste("Score de", titulo_pilar),
-      subtitle = "Fundos na ordem do ranking geral",
+      subtitle = "Fundos em ordem decrescente da nota do pilar",
       x = NULL,
       y = "Nota"
     ) +
@@ -323,7 +320,7 @@ for (pilar in names(pilares_score)) {
     ),
     plot = grafico_pilar,
     width = 12,
-    height = max(9, nrow(base_pilares_plot) * 0.25),
+    height = max(9, nrow(base_pilar_plot) * 0.25),
     dpi = 300,
     bg = "white"
   )
