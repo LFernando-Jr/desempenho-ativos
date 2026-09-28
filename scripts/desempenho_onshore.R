@@ -36,7 +36,7 @@ data %<>%
   mutate(value = round(value*100, 2))
 
 lst_dt = data %>% 
-  dplyr::filter(date < as.Date("2025-12-01")) %>%
+  # dplyr::filter(date < as.Date("2025-12-01")) %>%
   arrange(desc(date)) %>% 
   group_by(name, retorno) %>%
   slice(1) %>%
