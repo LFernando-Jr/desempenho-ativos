@@ -4,6 +4,19 @@
 cria_dicionario_campos = function(dados_abas) {
   definicoes = c(
     Fundo = "Fundo identificado na linha da matriz de correlação.",
+    cnpj = "CNPJ cadastrado do fundo, como texto de 14 dígitos para preservar zeros iniciais. Fonte: cadastro.csv; migração por nome exato da planilha cadastral legada.",
+    pp_retorno = "Nota de retorno × 30%; única métrica do pilar. Contribuição ao score final em pontos.",
+    pp_hit_mensal = "Nota do hit rate mensal × 40% × 25%. Contribuição ao score final em pontos.",
+    pp_hit_6m = "Nota do hit rate de 6 meses × 20% × 25%. Contribuição ao score final em pontos.",
+    pp_hit_12m = "Nota do hit rate de 12 meses × 40% × 25%. Contribuição ao score final em pontos.",
+    pp_drawdown = "Nota do drawdown × 40% × 20%. Contribuição ao score final em pontos.",
+    pp_cauda = "Nota dos três piores meses × 30% × 20%. Contribuição ao score final em pontos.",
+    pp_volatilidade = "Nota da volatilidade do excesso × 30% × 20%. Contribuição ao score final em pontos.",
+    pp_taxa = "Nota da taxa de administração × 60% × 25%. Contribuição ao score final em pontos.",
+    pp_razao = "Nota da razão excesso/taxa × 40% × 25%. Contribuição ao score final em pontos.",
+    pp_consistencia = "Total das contribuições das métricas de consistência; nota do pilar × 25%. Não somar novamente às métricas.",
+    pp_risco = "Total das contribuições das métricas de risco; nota do pilar × 20%. Não somar novamente às métricas.",
+    pp_custo = "Total das contribuições das métricas de custo; nota do pilar × 25%. Não somar novamente às métricas.",
     adjusted_rand = "Índice de Rand ajustado entre duas partições de clusters; 1 indica concordância perfeita.",
     alertas_relativos = "Alertas de drawdown ou cauda entre os 10% piores da amostra; não são vetos.",
     aprovado_quantitativo = "Indica aprovação com margem pela régua quantitativa.",
@@ -166,6 +179,7 @@ cria_dicionario_campos = function(dados_abas) {
       definicao = definicao,
       unidade = case_when(
         matriz_fundo ~ "Correlação (-1 a 1)",
+        str_starts(campos, "pp_") ~ "Pontos do score final (pp)",
         campos %in% c("contribuicao_pilar") ~ "Pontos (0 a 100)",
         campos %in% c("peso_no_pilar") ~ "Percentual",
         campos %in% c("valor_metrica") ~ "Conforme unidade_metrica",

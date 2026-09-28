@@ -74,6 +74,8 @@ as sugestões automáticas são exportadas separadamente em `data/intermediate/`
 - `output/reports/`: planilhas finais versionadas;
 - `legacy/`: versões anteriores preservadas para consulta.
 
-A planilha final contém quatro abas `Pilar` (retorno, consistência, risco e custo) que abrem cada métrica em valor, cálculo, z-score, nota, peso, contribuição, nota e quartil do pilar. O `Dicionário` define os campos; a abertura é auditável e não altera o score.
+A saída canônica é `output/reports/analise_high_grade.xlsx`. A aba `Ranking` apresenta posição, score e quartil, seguida das notas dos pilares, métricas objetivas e contribuição de cada uma das nove métricas em pontos do score final (pp): nota da métrica × peso dentro do pilar × peso do pilar. As nove contribuições somam o score; os totais por pilar são subtotais e não devem ser somados novamente. A exportação valida essa reconciliação.
+
+A antiga aba Ranking passa a se chamar `Diligência e Redundância`, preservando os alertas, a fila qualitativa e os diagnósticos de correlação sem repetir métricas e notas. As quatro abas `Pilar` (retorno, consistência, risco e custo) permanecem com valor, cálculo, z-score, nota, peso, contribuição, nota e quartil do pilar. `Todos os Fundos` acrescenta o CNPJ como texto de 14 dígitos, lido do `cadastro.csv`. Os 53 identificadores foram migrados por correspondência exata de nomes da planilha cadastral legada, com validação dos dígitos verificadores; o XLSX legado continua fora dos insumos do pipeline. O `Dicionário` define os campos; a abertura é auditável e não altera o score.
 
 Os scripts canônicos mantêm a metodologia da versão de 36 meses. A abordagem paralela de `selecao_credito.R` permanece em `legacy/` e não entra silenciosamente no score atual.

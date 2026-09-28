@@ -12,7 +12,7 @@ path_intermediate = "projects/criterios-selecao-fundos-cp/data/intermediate"
 path_figures = "projects/criterios-selecao-fundos-cp/output/figures"
 path_fundos_figures = file.path(path_figures, "fundos")
 path_reports = "projects/criterios-selecao-fundos-cp/output/reports"
-path_relatorio = file.path(path_reports, "analise_high_grade_etapa2_36m.xlsx")
+path_relatorio = file.path(path_reports, "analise_high_grade.xlsx")
 
 dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_fundos_figures, recursive = TRUE, showWarnings = FALSE)
@@ -841,52 +841,33 @@ write_csv2(indice_fundos, file.path(path_fundos_figures, "indice.csv"))
 # Workbook
 # ------------------------------------------------------------
 
-ranking_xlsx = priorizacao_qualitativa %>%
-  select(
-    ranking_geral,
-    nome_plot,
-    nota_final,
-    quartil_score,
-    classificacao_descritiva,
-    status_quantitativo,
-    aprovado_quantitativo,
-    zona_fronteira,
-    nota_minima_pilar,
-    pilar_abaixo_minimo,
-    red_flags_absolutos,
-    alertas_relativos,
-    nota_retorno,
-    nota_consistencia,
-    nota_risco,
-    nota_custo,
-    nota_taxa,
-    nota_razao_excesso_taxa,
-    excesso_cdi_aa,
-    hit_rate_mensal,
-    hit_rate_6m,
-    hit_rate_12m,
-    volatilidade_excesso_aa,
-    max_drawdown_excesso,
-    taxa_adm_aa,
-    razao_excesso_taxa,
-    prioridade_analise_qualitativa,
-    criterio_priorizacao,
-    status_priorizacao,
-    status_qualitativo,
-    observacao_qualitativa,
-    fundo_mais_correlacionado,
-    correlacao_maxima,
-    nivel_redundancia_maxima,
-    fundo_carteira_mais_correlacionado,
-    correlacao_maxima_carteira,
-    nivel_redundancia_carteira
-  )
+diagnostico_diligencia_xlsx = priorizacao_qualitativa %>%
+  select(nome_plot, nota_minima_pilar, pilar_abaixo_minimo,
+    red_flags_absolutos, alertas_relativos, prioridade_analise_qualitativa,
+    criterio_priorizacao, status_priorizacao, status_qualitativo,
+    observacao_qualitativa, fundo_mais_correlacionado, correlacao_maxima,
+    nivel_redundancia_maxima, fundo_carteira_mais_correlacionado,
+    correlacao_maxima_carteira, nivel_redundancia_carteira)
 
 source(
   file = "projects/criterios-selecao-fundos-cp/scripts/abertura_score.R",
   encoding = "UTF-8"
 )
 abertura_score_xlsx = cria_abertura_score(priorizacao_qualitativa)
+source("projects/criterios-selecao-fundos-cp/scripts/ranking_workbook.R", encoding = "UTF-8")
+ranking_xlsx = cria_ranking_workbook(priorizacao_qualitativa, abertura_score_xlsx)
+cadastro_cnpj = read_csv2(
+  "projects/criterios-selecao-fundos-cp/data/input/cadastro.csv",
+  col_types = cols(.default = col_character()), show_col_types = FALSE
+) %>% clean_names() %>% transmute(nome_xlsx = fundo, cnpj)
+if (anyDuplicated(cadastro_cnpj$nome_xlsx) ||
+    any(!str_detect(cadastro_cnpj$cnpj, "^[0-9]{14}$"))) {
+  stop("Cadastro CNPJ inválido ou nomes duplicados.")
+}
+metricas_todos_fundos = metricas_todos_fundos %>%
+  left_join(cadastro_cnpj, by = "nome_xlsx") %>% relocate(cnpj, .after = nome_xlsx)
+if (any(is.na(metricas_todos_fundos$cnpj))) stop("Fundo sem CNPJ no cadastro.")
+
 abertura_retorno_xlsx = abertura_score_xlsx %>%
   filter(pilar == "Retorno") %>% select(-pilar)
 abertura_consistencia_xlsx = abertura_score_xlsx %>%
@@ -945,6 +926,7 @@ wb = createWorkbook(creator = "Análise de fundos high grade")
 
 abas = c(
   "Ranking",
+  "Diligência e Redundância",
   "Pilar Retorno",
   "Pilar Consistência",
   "Pilar Risco",
@@ -969,6 +951,7 @@ walk(.x = abas, .f = ~ addWorksheet(wb = wb, sheetName = .x, gridLines = FALSE))
 
 dados_abas = list(
   "Ranking" = ranking_xlsx,
+  "Diligência e Redundância" = diagnostico_diligencia_xlsx,
   "Pilar Retorno" = abertura_retorno_xlsx,
   "Pilar Consistência" = abertura_consistencia_xlsx,
   "Pilar Risco" = abertura_risco_xlsx,
@@ -993,6 +976,9 @@ source(
   encoding = "UTF-8"
 )
 dados_abas[["Dicionário"]] = cria_dicionario_campos(dados_abas)
+rotulos_ranking = setNames(titulos_ranking_workbook(), names(ranking_xlsx))
+dados_abas[["Dicionário"]] = dados_abas[["Dicionário"]] %>%
+  mutate(campo = if_else(aba == "Ranking", unname(rotulos_ranking[campo]), campo))
 
 estilo_nota = createStyle(numFmt = "0.0")
 estilo_percentual = createStyle(numFmt = "0.00%")
@@ -1004,6 +990,10 @@ estilo_calculo = createStyle(wrapText = TRUE, valign = "center")
 iwalk(
   .x = dados_abas,
   .f = function(dados, aba) {
+    if (aba == "Ranking") {
+      escreve_ranking_workbook(wb, dados)
+      return(invisible(NULL))
+    }
     writeDataTable(
       wb = wb,
       sheet = aba,
