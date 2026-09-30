@@ -281,7 +281,7 @@ grafico_ranking = ggplot(
   scale_y_continuous(limits = c(0, 100)) +
   labs(
     title = "Score de qualidade individual",
-    subtitle = "Aprovado com margem a partir de 58; zona cinzenta entre 52 e abaixo de 58",
+    subtitle = "Retorno e risco: 36m | consistência: 72m | aprovado com margem a partir de 58",
     x = NULL,
     y = "Nota",
     fill = NULL
@@ -293,7 +293,7 @@ grafico_ranking = ggplot(
   )
 
 ggsave(
-  filename = file.path(path_figures, "grafico_ranking_fundos_36m.png"),
+  filename = file.path(path_figures, "grafico_ranking_fundos.png"),
   plot = grafico_ranking,
   width = 12,
   height = max(9, nrow(base_ranking_plot) * 0.25),
@@ -319,6 +319,20 @@ titulos_pilares = c(
 for (pilar in names(pilares_score)) {
   coluna_nota = pilares_score[[pilar]]
   titulo_pilar = titulos_pilares[[pilar]]
+  janela_pilar = switch(
+    pilar,
+    retorno = "36 meses comuns",
+    consistencia = "72 meses comuns",
+    risco = "36 meses comuns",
+    custo = "Cadastro vigente"
+  )
+  sufixo_pilar = switch(
+    pilar,
+    retorno = "36m",
+    consistencia = "72m",
+    risco = "36m",
+    custo = "atual"
+  )
   base_pilar_plot = priorizacao_qualitativa %>%
     arrange(desc(.data[[coluna_nota]]), nome_plot) %>%
     mutate(nome_plot = factor(nome_plot, levels = rev(nome_plot)))
@@ -332,7 +346,7 @@ for (pilar in names(pilares_score)) {
     scale_y_continuous(limits = c(0, 100)) +
     labs(
       title = paste("Score de", titulo_pilar),
-      subtitle = "Fundos em ordem decrescente da nota do pilar",
+      subtitle = paste("Fundos em ordem decrescente da nota do pilar |", janela_pilar),
       x = NULL,
       y = "Nota"
     ) +
@@ -345,7 +359,7 @@ for (pilar in names(pilares_score)) {
   ggsave(
     filename = file.path(
       path_figures,
-      paste0("grafico_score_", pilar, "_36m.png")
+      paste0("grafico_score_", pilar, "_", sufixo_pilar, ".png")
     ),
     plot = grafico_pilar,
     width = 12,
