@@ -879,7 +879,8 @@ abertura_custo_xlsx = abertura_score_xlsx %>%
 
 metodologia_xlsx = tibble(
   item = c(
-    "Janela do score",
+    "Janela principal",
+    "Janela de consistência",
     "Histórico completo",
     "Excesso anualizado sobre CDI",
     "Janela móvel de 36 meses",
@@ -898,14 +899,15 @@ metodologia_xlsx = tibble(
     "Clusters"
   ),
   decisao = c(
-    "36 meses completos e comuns a todos os fundos",
-    "Preservado apenas para diagnósticos e visualizações",
+    "36 meses completos e comuns para retorno, risco, correlações e demais métricas da janela principal",
+    "72 meses completos e comuns para os hit rates de consistência: 72 observações mensais, 67 janelas móveis de 6 meses e 61 janelas móveis de 12 meses",
+    "Preservado para diagnósticos, visualizações e construção da janela comum de consistência de 72 meses",
     "Produto dos excessos mensais geométricos elevado a 12/36, menos 1; não é spread de crédito ou diferença simples entre taxas anualizadas",
     "Nas fichas individuais, cada ponto usa 36 meses completos e consecutivos do histórico; diagnóstico fora do score",
     "Z-score robusto com MAD padrão, limite [-4,4] e logística 0-100",
     "Cada aba Pilar mostra valor da métrica, cálculo, z orientado e truncado usado na nota, nota, peso, contribuição, nota do pilar e quartil do pilar; Q1 é o melhor quartil entre elegíveis",
     "Retorno 30%; consistência 25%; risco 20%; custo 25%",
-    "Hit rates mensal 40%, 6 meses 20% e 12 meses 40%",
+    "Hit rates mensal 20%, 6 meses 20% e 12 meses 60%; todos calculados nos mesmos 72 meses comuns",
     "Taxa 60% e razão excesso líquido/taxa 40%",
     "Não integra o score de qualidade",
     "Aprovado com margem: nota >= 58, sem red flag e sem pilar abaixo de 30",
