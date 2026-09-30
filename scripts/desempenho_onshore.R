@@ -35,12 +35,30 @@ data %<>%
                names_to = "retorno") %>% 
   mutate(value = round(value*100, 2))
 
-lst_dt = data %>% 
+lst_dt = data %>%
   # dplyr::filter(date < as.Date("2025-12-01")) %>%
   arrange(desc(date)) %>% 
   group_by(name, retorno) %>%
   slice(1) %>%
   ungroup() 
+
+lst_dt %<>% 
+  bind_rows(
+    tibble(
+      date = as.Date("2026-09-25"),
+      name = "Carteira Modelo",
+      retorno = c(
+        "acumulado_mes",
+        "acumulado_ano",
+        "acumulado_12_meses"
+      ),
+      value = c(
+        0.915585,
+        10.42566,
+        14.67884
+      )
+    )
+  )
 
 # Visualização de dados ---------------------------------------------------
 

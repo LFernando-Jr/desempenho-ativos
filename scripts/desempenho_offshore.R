@@ -122,6 +122,23 @@ lst_dt = data %>%
   slice(1) %>%
   ungroup()
 
+# lst_dt %<>% 
+#   bind_rows(
+#     tibble(
+#       date = as.Date("2026-09-25"),
+#       name = "Carteira Modelo",
+#       retorno = c(
+#         "acumulado_mes",
+#         "acumulado_ano",
+#         "acumulado_12_meses"
+#       ),
+#       value = c(
+#         0.915585,
+#         10.42566,
+#         14.67884
+#       )
+#     )
+#   )
 # Visualização de dados ---------------------------------------------------
 
 ## Linhas -----------------------------------------------------------------
