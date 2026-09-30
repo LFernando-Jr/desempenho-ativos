@@ -13,9 +13,9 @@ cria_ranking_workbook = function(base, abertura) {
   resultado = base %>% arrange(ranking_geral) %>%
     transmute(ranking_geral, nome_plot, nota_final, quartil_score = paste0("Q", quartil_score),
       nota_retorno, excesso_cdi_aa, pp_retorno = nota_retorno * 0.30,
-      nota_consistencia, hit_rate_mensal, pp_hit_mensal = nota_hit_mensal * 0.40 * 0.25,
+      nota_consistencia, hit_rate_mensal, pp_hit_mensal = nota_hit_mensal * 0.20 * 0.25,
       hit_rate_6m, pp_hit_6m = nota_hit_6m * 0.20 * 0.25,
-      hit_rate_12m, pp_hit_12m = nota_hit_12m * 0.40 * 0.25,
+      hit_rate_12m, pp_hit_12m = nota_hit_12m * 0.60 * 0.25,
       pp_consistencia = nota_consistencia * 0.25,
       nota_risco, max_drawdown_excesso, pp_drawdown = nota_drawdown * 0.40 * 0.20,
       media_tres_piores_meses, pp_cauda = nota_cauda * 0.30 * 0.20,
@@ -48,7 +48,7 @@ escreve_ranking_workbook = function(wb, dados) {
   cabecalho = createStyle(fgFill = "#DCE6F1", fontColour = "#17365D", textDecoration = "bold", wrapText = TRUE, valign = "center")
   writeData(wb, "Ranking", "Análise high grade | Ranking", startRow = 1)
   addStyle(wb, "Ranking", createStyle(fontSize = 18, fontColour = "#17365D", textDecoration = "bold"), rows = 1, cols = 1)
-  writeData(wb, "Ranking", "36 meses comuns | contribuições das métricas em pontos do score final", startRow = 2)
+  writeData(wb, "Ranking", "Retorno e risco: 36 meses comuns | consistência: 72 meses comuns | contribuições em pontos do score final", startRow = 2)
   writeData(wb, "Ranking", "Nota × peso no pilar × peso do pilar. A soma das 9 métricas = score; os totais dos pilares não devem ser somados novamente.", startRow = 3)
   grupos = list(c(1, 4), c(5, 7), c(8, 15), c(16, 23), c(24, 29), c(30, 30))
   rotulos = c("Ranking geral", "Retorno | 30%", "Consistência | 25%", "Risco | 20%", "Custo | 25%", "Decisão")
