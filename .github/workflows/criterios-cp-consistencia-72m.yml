@@ -32,6 +32,10 @@ jobs:
 
       - name: Restore renv
         uses: r-lib/actions/setup-renv@v2
+        env:
+          # O .Rprofile do projeto carrega os pacotes antes do restore.
+          # Durante o bootstrap, ignoramos apenas o profile; o lockfile segue soberano.
+          R_PROFILE_USER: /dev/null
 
       - name: Rebuild quantitative pipeline
         shell: bash
