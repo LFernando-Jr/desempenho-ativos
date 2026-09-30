@@ -30,6 +30,24 @@ jobs:
           r-version: "4.5.1"
           use-public-rspm: true
 
+      - name: Install R system libraries
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libpng-dev \
+            libtiff-dev \
+            libjpeg-dev \
+            libharfbuzz-dev \
+            libfribidi-dev \
+            libgit2-dev \
+            libicu-dev
+
       - name: Bootstrap renv
         shell: bash
         env:
