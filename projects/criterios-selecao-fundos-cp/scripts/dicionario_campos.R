@@ -195,12 +195,13 @@ cria_dicionario_campos = function(dados_abas) {
         str_detect(campos, "(correlacao|silhueta|adjusted_rand|z_robusto|z_usado_na_nota|razao_excesso_taxa|limiar)") ~ "Razão ou correlação",
         str_detect(campos, "(^data|_data$|^primeira_data$|^ultima_data$|^mes$|^mes_fim$|_mes$|^primeiro_mes$|^ultimo_mes$|^inicio_|^fim_)") ~ "Data ou mês",
         campos == "valor" ~ "Conforme indicador",
-        campos %in% c("aprovado_quantitativo", "zona_fronteira", "pilar_abaixo_minimo", "elegivel_ranking", "elegivel_score_36m", "envolve_carteira_atual", "fundo_a_carteira", "fundo_b_carteira", "mes_completo", "mes_encerrado", "mes_seguinte_observado", "revisar", "taxa_requer_revisao") ~ "Sim/Não",
+        campos %in% c("aprovado_quantitativo", "zona_fronteira", "pilar_abaixo_minimo", "elegivel_ranking", "elegivel_score_36m", "elegivel_consistencia_72m", "envolve_carteira_atual", "fundo_a_carteira", "fundo_b_carteira", "mes_completo", "mes_encerrado", "mes_seguinte_observado", "revisar", "taxa_requer_revisao") ~ "Sim/Não",
         TRUE ~ "Texto ou categoria"
       ),
       periodo = case_when(
         aba == "Histórico Mensal" ~ "Mês indicado; histórico completo",
         str_detect(campos, "historico|janelas_36m") ~ "Histórico completo",
+        str_detect(campos, "consistencia|hit_rate_(mensal|6m|12m)") ~ "72 meses comuns",
         aba %in% c("Metodologia", "Diagnóstico Taxas") ~ "Parâmetros da rodada",
         aba == "Estab. Clusters" ~ "Janelas históricas do teste",
         TRUE ~ "Rodada e 36 meses comuns"
