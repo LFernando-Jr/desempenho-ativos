@@ -79,8 +79,7 @@ jobs:
           pacotes = c(
             "conflicted", "tidyverse", "magrittr", "readxl", "openxlsx",
             "stringi", "slider", "scales", "cluster", "quantmod", "janitor",
-            "bizdays", "tidyquant", "PerformanceAnalytics", "lubridate",
-            "zoo", "ggrepel"
+            "bizdays", "PerformanceAnalytics", "lubridate", "zoo", "ggrepel"
           )
           lapply(pacotes, library, character.only = TRUE)
           conflict_prefer("filter", "dplyr")
