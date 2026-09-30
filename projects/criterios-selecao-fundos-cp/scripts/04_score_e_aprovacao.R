@@ -27,9 +27,9 @@ cfg_pesos_score = c(
 
 # Pesos internos do pilar de consistência.
 cfg_pesos_consistencia = c(
-  mensal = 0.40,
+  mensal = 0.20,
   seis_meses = 0.20,
-  doze_meses = 0.40
+  doze_meses = 0.60
 )
 
 # Pesos internos do pilar de risco.
@@ -201,6 +201,11 @@ metricas_score = metricas_todos_fundos %>%
     inicio_serie_mensal_score,
     fim_serie_mensal_score,
     n_meses_score,
+    inicio_serie_mensal_consistencia,
+    fim_serie_mensal_consistencia,
+    n_meses_consistencia,
+    n_janelas_6m_consistencia,
+    n_janelas_12m_consistencia,
     hit_rate_36m_historico,
     n_janelas_36m_historico,
     benchmark_menor_tracking_error,
