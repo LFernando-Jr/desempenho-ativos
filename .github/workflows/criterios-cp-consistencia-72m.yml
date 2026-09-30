@@ -35,7 +35,7 @@ jobs:
         env:
           R_PROFILE_USER: /dev/null
         run: |
-          Rscript --no-init-file -e 'install.packages("renv", repos = "https://cloud.r-project.org")'
+          Rscript --no-init-file -e 'install.packages("https://cloud.r-project.org/src/contrib/Archive/renv/renv_1.1.5.tar.gz", repos = NULL, type = "source")'
 
       - name: Restore renv
         uses: r-lib/actions/setup-renv@v2
