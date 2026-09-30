@@ -14,7 +14,7 @@ path_benchs_raw = file.path(path_intermediate, "benchs_raw.rds")
 path_de_para = file.path(path_intermediate, "de_para_fundos.rds")
 
 # Janela comum de 36 meses usada na elegibilidade-base, retorno, risco e correlações.
-# O pilar de consistência usa uma janela adicional de 72 meses na Etapa 3.
+# O pilar de consistência usa os mesmos 36 meses completos na Etapa 3.
 JANELA_SCORE_MESES = 36L
 
 paths_necessarios = c(path_fundos_raw, path_benchs_raw, path_de_para)

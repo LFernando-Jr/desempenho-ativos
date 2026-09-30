@@ -32,7 +32,7 @@ figuras_canonicas = c(
   "dendrograma_fundos_excessos_mensais_36m.png",
   "grafico_ranking_fundos.png",
   "grafico_score_retorno_36m.png",
-  "grafico_score_consistencia_72m.png",
+  "grafico_score_consistencia_36m.png",
   "grafico_score_risco_36m.png",
   "grafico_score_custo_atual.png",
   "heatmap_afinidade_benchmarks_36m.png",
@@ -290,7 +290,7 @@ grafico_ranking = ggplot(
   scale_y_continuous(limits = c(0, 100)) +
   labs(
     title = "Score de qualidade individual",
-    subtitle = "Retorno e risco: 36m | consistência: 72m | aprovado com margem a partir de 58",
+    subtitle = "Todos os pilares: 36 meses comuns | aprovado com margem a partir de 58",
     x = NULL,
     y = "Nota",
     fill = NULL
@@ -331,14 +331,14 @@ for (pilar in names(pilares_score)) {
   janela_pilar = switch(
     pilar,
     retorno = "36 meses comuns",
-    consistencia = "72 meses comuns",
+    consistencia = "36 meses comuns",
     risco = "36 meses comuns",
     custo = "Cadastro vigente"
   )
   sufixo_pilar = switch(
     pilar,
     retorno = "36m",
-    consistencia = "72m",
+    consistencia = "36m",
     risco = "36m",
     custo = "atual"
   )
@@ -922,15 +922,15 @@ metodologia_xlsx = tibble(
     "Clusters"
   ),
   decisao = c(
-    "36 meses completos e comuns para retorno, risco, correlações e demais métricas da janela principal",
-    "72 meses completos e comuns para os hit rates de consistência: 72 observações mensais, 67 janelas móveis de 6 meses e 61 janelas móveis de 12 meses",
-    "Preservado para diagnósticos, visualizações e construção da janela comum de consistência de 72 meses",
+    "36 meses completos e comuns para todos os pilares e correlações",
+    "Os mesmos 36 meses completos para os hit rates: 36 observações mensais, 31 janelas móveis de 6 meses e 25 janelas móveis de 12 meses",
+    "Preservado para diagnósticos e visualizações; não altera a janela comum do score",
     "Produto dos excessos mensais geométricos elevado a 12/36, menos 1; não é spread de crédito ou diferença simples entre taxas anualizadas",
     "Nas fichas individuais, cada ponto usa 36 meses completos e consecutivos do histórico; diagnóstico fora do score",
     "Z-score robusto com MAD padrão, limite [-4,4] e logística 0-100",
     "Cada aba Pilar mostra valor da métrica, cálculo, z orientado e truncado usado na nota, nota, peso, contribuição, nota do pilar e quartil do pilar; Q1 é o melhor quartil entre elegíveis",
     "Retorno 30%; consistência 25%; risco 20%; custo 25%",
-    "Hit rates mensal 20%, 6 meses 20% e 12 meses 60%; todos calculados nos mesmos 72 meses comuns",
+    "Hit rates mensal 20%, 6 meses 20% e 12 meses 60%; todos calculados nos mesmos 36 meses comuns",
     "Taxa 60% e razão excesso líquido/taxa 40%",
     "Não integra o score de qualidade",
     "Aprovado com margem: nota >= 58, sem red flag e sem pilar abaixo de 30",

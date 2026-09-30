@@ -15,9 +15,9 @@ path_universo = file.path(path_intermediate, "universo_elegibilidade_36m.rds")
 path_calendario_cdi = file.path(path_intermediate, "calendario_mensal_cdi.rds")
 
 # Janelas comuns da metodologia.
-# Retorno, risco e correlações permanecem em 36 meses; consistência usa 72 meses.
+# Todos os pilares usam a mesma janela comum de 36 meses.
 JANELA_SCORE_MESES = 36L
-JANELA_CONSISTENCIA_MESES = 72L
+JANELA_CONSISTENCIA_MESES = JANELA_SCORE_MESES
 
 paths_necessarios = c(
   path_retornos_historico,
@@ -213,25 +213,14 @@ write_rds(
 )
 
 # ------------------------------------------------------------
-# Janela comum de consistência — 72 meses
+# Janela comum de consistência — os mesmos 36 meses do score
 # ------------------------------------------------------------
 
 mes_fim_consistencia = max(fundos_mensais_score$mes)
 mes_inicio_consistencia = mes_fim_consistencia %m-%
   months(JANELA_CONSISTENCIA_MESES - 1L)
 
-chaves_fundos_score = fundos_mensais_score %>%
-  distinct(nome_xlsx, nome_curto, nome_plot, nome_quantum, taxa_adm_aa)
-
-fundos_mensais_consistencia = fundos_mensais_historico %>%
-  semi_join(
-    chaves_fundos_score,
-    by = c("nome_xlsx", "nome_curto", "nome_plot", "nome_quantum", "taxa_adm_aa")
-  ) %>%
-  filter(
-    mes >= mes_inicio_consistencia,
-    mes <= mes_fim_consistencia
-  ) %>%
+fundos_mensais_consistencia = fundos_mensais_score %>%
   arrange(nome_plot, mes)
 
 checagem_consistencia = fundos_mensais_consistencia %>%
@@ -251,13 +240,13 @@ checagem_consistencia = fundos_mensais_consistencia %>%
 if (any(!checagem_consistencia$janela_completa)) {
   print(checagem_consistencia %>% filter(!janela_completa))
   stop(
-    "Nem todos os fundos elegíveis ao score possuem 72 meses completos e comuns ",
+    "Nem todos os fundos elegíveis ao score possuem 36 meses completos e comuns ",
     "para o pilar de consistência."
   )
 }
 
 message(
-  "[03] Consistência: 72 meses comuns de ",
+  "[03] Consistência: 36 meses comuns de ",
   format(mes_inicio_consistencia, "%m/%Y"),
   " a ",
   format(mes_fim_consistencia, "%m/%Y"),
@@ -298,16 +287,16 @@ metricas_consistencia = fundos_mensais_consistencia %>%
   )
 
 if (
-  any(metricas_consistencia$n_meses_consistencia != 72L) ||
-    any(metricas_consistencia$n_janelas_6m_consistencia != 67L) ||
-    any(metricas_consistencia$n_janelas_12m_consistencia != 61L)
+  any(metricas_consistencia$n_meses_consistencia != 36L) ||
+    any(metricas_consistencia$n_janelas_6m_consistencia != 31L) ||
+    any(metricas_consistencia$n_janelas_12m_consistencia != 25L)
 ) {
   stop("Contagem inesperada de observações nas janelas de consistência.")
 }
 
 write_rds(
   x = fundos_mensais_consistencia,
-  file = file.path(path_intermediate, "fundos_mensais_consistencia_72m.rds")
+  file = file.path(path_intermediate, "fundos_mensais_consistencia_36m.rds")
 )
 
 # ------------------------------------------------------------
@@ -581,11 +570,11 @@ metricas_todos_fundos = universo_elegibilidade %>%
     relationship = "one-to-one"
   ) %>%
   mutate(
-    elegivel_consistencia_72m = n_meses_consistencia == JANELA_CONSISTENCIA_MESES &
-      n_janelas_6m_consistencia == 67L &
-      n_janelas_12m_consistencia == 61L,
+    elegivel_consistencia_36m = n_meses_consistencia == JANELA_CONSISTENCIA_MESES &
+      n_janelas_6m_consistencia == 31L &
+      n_janelas_12m_consistencia == 25L,
     elegivel_ranking = elegivel_score_36m &
-      elegivel_consistencia_72m &
+      elegivel_consistencia_36m &
       n_meses_score == JANELA_SCORE_MESES &
       is.finite(excesso_cdi_aa) &
       is.finite(hit_rate_mensal) &

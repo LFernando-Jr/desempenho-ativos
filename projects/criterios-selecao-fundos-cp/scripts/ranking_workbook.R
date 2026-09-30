@@ -48,7 +48,7 @@ escreve_ranking_workbook = function(wb, dados) {
   cabecalho = createStyle(fgFill = "#DCE6F1", fontColour = "#17365D", textDecoration = "bold", wrapText = TRUE, valign = "center")
   writeData(wb, "Ranking", "Análise high grade | Ranking", startRow = 1)
   addStyle(wb, "Ranking", createStyle(fontSize = 18, fontColour = "#17365D", textDecoration = "bold"), rows = 1, cols = 1)
-  writeData(wb, "Ranking", "Retorno e risco: 36 meses comuns | consistência: 72 meses comuns | contribuições em pontos do score final", startRow = 2)
+  writeData(wb, "Ranking", "Todos os pilares: 36 meses comuns | contribuições em pontos do score final", startRow = 2)
   writeData(wb, "Ranking", "Nota × peso no pilar × peso do pilar. A soma das 9 métricas = score; os totais dos pilares não devem ser somados novamente.", startRow = 3)
   grupos = list(c(1, 4), c(5, 7), c(8, 15), c(16, 23), c(24, 29), c(30, 30))
   rotulos = c("Ranking geral", "Retorno | 30%", "Consistência | 25%", "Risco | 20%", "Custo | 25%", "Decisão")
