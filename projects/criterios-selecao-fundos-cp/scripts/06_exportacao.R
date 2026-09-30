@@ -18,14 +18,23 @@ dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_fundos_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_reports, recursive = TRUE, showWarnings = FALSE)
 
+figuras_substituidas = c(
+  "grafico_ranking_fundos_36m.png",
+  "grafico_score_consistencia_36m.png",
+  "grafico_score_custo_36m.png"
+)
+
+paths_figuras_substituidas = file.path(path_figures, figuras_substituidas)
+file.remove(paths_figuras_substituidas[file.exists(paths_figuras_substituidas)])
+
 figuras_canonicas = c(
   "heatmap_correlacao_excessos_mensais_36m.png",
   "dendrograma_fundos_excessos_mensais_36m.png",
-  "grafico_ranking_fundos_36m.png",
+  "grafico_ranking_fundos.png",
   "grafico_score_retorno_36m.png",
-  "grafico_score_consistencia_36m.png",
+  "grafico_score_consistencia_72m.png",
   "grafico_score_risco_36m.png",
-  "grafico_score_custo_36m.png",
+  "grafico_score_custo_atual.png",
   "heatmap_afinidade_benchmarks_36m.png",
   "grafico_excesso_cdi_quartis_36m.png",
   "grafico_excesso_cdi_fundos_aprovados_36m.png",
