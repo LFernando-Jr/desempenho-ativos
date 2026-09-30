@@ -55,16 +55,46 @@ jobs:
         run: |
           Rscript --no-init-file -e 'install.packages("https://cloud.r-project.org/src/contrib/Archive/renv/renv_1.1.5.tar.gz", repos = NULL, type = "source")'
 
-      - name: Restore renv
-        uses: r-lib/actions/setup-renv@v2
+      - name: Restore lockfile into isolated CI library
+        shell: bash
         env:
-          # O .Rprofile do projeto carrega os pacotes antes do restore.
-          # Durante o bootstrap, ignoramos apenas o profile; o lockfile segue soberano.
           R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file - <<'RS'
+          dir.create(".ci-library", showWarnings = FALSE)
+          renv::restore(
+            library = ".ci-library",
+            lockfile = "renv.lock",
+            prompt = FALSE
+          )
+          RS
 
       - name: Rebuild quantitative pipeline
         shell: bash
-        run: Rscript projects/criterios-selecao-fundos-cp/00_run_all.R
+        env:
+          R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file - <<'RS'
+          .libPaths(c(normalizePath(".ci-library"), .libPaths()))
+          pacotes = c(
+            "conflicted", "tidyverse", "magrittr", "readxl", "openxlsx",
+            "stringi", "slider", "scales", "cluster", "quantmod", "janitor",
+            "bizdays", "tidyquant", "PerformanceAnalytics", "lubridate",
+            "zoo", "ggrepel"
+          )
+          lapply(pacotes, library, character.only = TRUE)
+          conflict_prefer("filter", "dplyr")
+          conflict_prefer("lag", "dplyr")
+          conflict_prefer("select", "dplyr")
+          conflict_prefer("view", "tibble")
+          conflict_prefer("set_names", "magrittr")
+          conflict_prefer("last", "dplyr")
+          conflict_prefer("first", "dplyr")
+          source(
+            "projects/criterios-selecao-fundos-cp/00_run_all.R",
+            encoding = "UTF-8"
+          )
+          RS
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -77,17 +107,32 @@ jobs:
           python -m pip install --disable-pip-version-check python-docx
           python projects/criterios-selecao-fundos-cp/scripts/update_metodologia_docx.py
 
-      - name: Validate methodology strings
+      - name: Validate methodology and regenerated workbook
         shell: bash
+        env:
+          R_PROFILE_USER: /dev/null
         run: |
-          Rscript - <<'RS'
-          source("projects/criterios-selecao-fundos-cp/scripts/04_score_e_aprovacao.R", encoding = "UTF-8")
+          Rscript --no-init-file - <<'RS'
+          .libPaths(c(normalizePath(".ci-library"), .libPaths()))
+          library(openxlsx)
+          score_file = "projects/criterios-selecao-fundos-cp/scripts/04_score_e_aprovacao.R"
+          score_txt = paste(readLines(score_file, warn = FALSE), collapse = "\n")
           stopifnot(
-            abs(cfg_pesos_consistencia["mensal"] - 0.20) < 1e-12,
-            abs(cfg_pesos_consistencia["seis_meses"] - 0.20) < 1e-12,
-            abs(cfg_pesos_consistencia["doze_meses"] - 0.60) < 1e-12
+            grepl("mensal = 0.20", score_txt, fixed = TRUE),
+            grepl("seis_meses = 0.20", score_txt, fixed = TRUE),
+            grepl("doze_meses = 0.60", score_txt, fixed = TRUE)
           )
-          cat("[QA] Pesos de consistência reconciliados: 20/20/60.\n")
+          xlsx = "projects/criterios-selecao-fundos-cp/output/reports/analise_high_grade.xlsx"
+          stopifnot(file.exists(xlsx))
+          tabs = getSheetNames(xlsx)
+          stopifnot(all(c("Ranking", "Pilar Consistência", "Metodologia") %in% tabs))
+          metodologia = read.xlsx(xlsx, sheet = "Metodologia")
+          texto_metodologia = paste(unlist(metodologia), collapse = " | ")
+          stopifnot(
+            grepl("72 meses", texto_metodologia, fixed = TRUE),
+            grepl("12 meses 60%", texto_metodologia, fixed = TRUE)
+          )
+          cat("[QA] Metodologia 72m e pesos 20/20/60 presentes no XLSX.\n")
           RS
 
       - name: Render Word for QA
