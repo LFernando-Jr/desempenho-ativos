@@ -14,8 +14,10 @@ path_retornos_score = file.path(path_intermediate, "fundos_retornos_score_36m.rd
 path_universo = file.path(path_intermediate, "universo_elegibilidade_36m.rds")
 path_calendario_cdi = file.path(path_intermediate, "calendario_mensal_cdi.rds")
 
-# Quantidade esperada de meses na janela comum do score.
+# Janelas comuns da metodologia.
+# Retorno, risco e correlações permanecem em 36 meses; consistência usa 72 meses.
 JANELA_SCORE_MESES = 36L
+JANELA_CONSISTENCIA_MESES = 72L
 
 paths_necessarios = c(
   path_retornos_historico,
@@ -211,10 +213,58 @@ write_rds(
 )
 
 # ------------------------------------------------------------
-# Consistência e risco
+# Janela comum de consistência — 72 meses
 # ------------------------------------------------------------
 
-fundos_mensais_score = fundos_mensais_score %>%
+mes_fim_consistencia = max(fundos_mensais_score$mes)
+mes_inicio_consistencia = mes_fim_consistencia %m-%
+  months(JANELA_CONSISTENCIA_MESES - 1L)
+
+chaves_fundos_score = fundos_mensais_score %>%
+  distinct(nome_xlsx, nome_curto, nome_plot, nome_quantum, taxa_adm_aa)
+
+fundos_mensais_consistencia = fundos_mensais_historico %>%
+  semi_join(
+    chaves_fundos_score,
+    by = c("nome_xlsx", "nome_curto", "nome_plot", "nome_quantum", "taxa_adm_aa")
+  ) %>%
+  filter(
+    mes >= mes_inicio_consistencia,
+    mes <= mes_fim_consistencia
+  ) %>%
+  arrange(nome_plot, mes)
+
+checagem_consistencia = fundos_mensais_consistencia %>%
+  group_by(nome_xlsx, nome_curto, nome_plot, nome_quantum, taxa_adm_aa) %>%
+  summarise(
+    primeiro_mes = min(mes),
+    ultimo_mes = max(mes),
+    n_meses = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    janela_completa = n_meses == JANELA_CONSISTENCIA_MESES &
+      primeiro_mes == mes_inicio_consistencia &
+      ultimo_mes == mes_fim_consistencia
+  )
+
+if (any(!checagem_consistencia$janela_completa)) {
+  print(checagem_consistencia %>% filter(!janela_completa))
+  stop(
+    "Nem todos os fundos elegíveis ao score possuem 72 meses completos e comuns ",
+    "para o pilar de consistência."
+  )
+}
+
+message(
+  "[03] Consistência: 72 meses comuns de ",
+  format(mes_inicio_consistencia, "%m/%Y"),
+  " a ",
+  format(mes_fim_consistencia, "%m/%Y"),
+  "."
+)
+
+fundos_mensais_consistencia = fundos_mensais_consistencia %>%
   group_by(nome_xlsx, nome_plot, nome_quantum, taxa_adm_aa) %>%
   arrange(mes, .by_group = TRUE) %>%
   mutate(
@@ -233,14 +283,43 @@ fundos_mensais_score = fundos_mensais_score %>%
   ) %>%
   ungroup()
 
+metricas_consistencia = fundos_mensais_consistencia %>%
+  group_by(nome_xlsx, nome_plot, nome_quantum, taxa_adm_aa) %>%
+  summarise(
+    inicio_serie_mensal_consistencia = min(mes),
+    fim_serie_mensal_consistencia = max(mes),
+    n_meses_consistencia = n(),
+    n_janelas_6m_consistencia = sum(is.finite(excesso_6m)),
+    n_janelas_12m_consistencia = sum(is.finite(excesso_12m)),
+    hit_rate_mensal = mean(excesso_cdi_m > 0),
+    hit_rate_6m = mean(excesso_6m > 0, na.rm = TRUE),
+    hit_rate_12m = mean(excesso_12m > 0, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+if (
+  any(metricas_consistencia$n_meses_consistencia != 72L) ||
+    any(metricas_consistencia$n_janelas_6m_consistencia != 67L) ||
+    any(metricas_consistencia$n_janelas_12m_consistencia != 61L)
+) {
+  stop("Contagem inesperada de observações nas janelas de consistência.")
+}
+
+write_rds(
+  x = fundos_mensais_consistencia,
+  file = file.path(path_intermediate, "fundos_mensais_consistencia_72m.rds")
+)
+
+# ------------------------------------------------------------
+# Retorno e risco — janela comum de 36 meses
+# ------------------------------------------------------------
+
 metricas_score = fundos_mensais_score %>%
   group_by(nome_xlsx, nome_plot, nome_quantum, taxa_adm_aa) %>%
   group_modify(
     .f = ~ {
       base_fundo = .x %>% arrange(mes)
       excesso = base_fundo$excesso_cdi_m
-      excesso_6m = base_fundo$excesso_6m
-      excesso_12m = base_fundo$excesso_12m
       n_meses = length(excesso)
       tres_piores = sort(excesso, na.last = NA)[seq_len(min(3, n_meses))]
       drawdown = calcula_drawdown(retornos = excesso)
@@ -250,9 +329,6 @@ metricas_score = fundos_mensais_score %>%
         fim_serie_mensal_score = max(base_fundo$mes),
         n_meses_score = n_meses,
         excesso_cdi_aa = prod(1 + excesso)^(12 / n_meses) - 1,
-        hit_rate_mensal = mean(excesso > 0),
-        hit_rate_6m = mean(excesso_6m > 0, na.rm = TRUE),
-        hit_rate_12m = mean(excesso_12m > 0, na.rm = TRUE),
         volatilidade_excesso_aa = sd(excesso) * sqrt(12),
         pior_mes = min(excesso),
         media_tres_piores_meses = mean(tres_piores),
@@ -262,7 +338,12 @@ metricas_score = fundos_mensais_score %>%
       )
     }
   ) %>%
-  ungroup()
+  ungroup() %>%
+  left_join(
+    metricas_consistencia,
+    by = c("nome_xlsx", "nome_plot", "nome_quantum", "taxa_adm_aa"),
+    relationship = "one-to-one"
+  )
 
 # Preserva a persistência de 36 meses no histórico completo apenas como diagnóstico.
 metricas_historicas_36m = fundos_mensais_historico %>%
@@ -500,7 +581,11 @@ metricas_todos_fundos = universo_elegibilidade %>%
     relationship = "one-to-one"
   ) %>%
   mutate(
+    elegivel_consistencia_72m = n_meses_consistencia == JANELA_CONSISTENCIA_MESES &
+      n_janelas_6m_consistencia == 67L &
+      n_janelas_12m_consistencia == 61L,
     elegivel_ranking = elegivel_score_36m &
+      elegivel_consistencia_72m &
       n_meses_score == JANELA_SCORE_MESES &
       is.finite(excesso_cdi_aa) &
       is.finite(hit_rate_mensal) &
