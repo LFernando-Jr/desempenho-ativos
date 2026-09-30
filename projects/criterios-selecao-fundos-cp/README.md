@@ -1,6 +1,6 @@
 # Critérios de seleção — fundos de crédito privado
 
-Pipeline quantitativo para seleção de fundos high grade, com janela estrutural de 36 meses.
+Pipeline quantitativo para seleção de fundos high grade, com janelas comuns de 36 meses para retorno/risco e 72 meses para consistência.
 
 ## Setup inicial
 
@@ -39,7 +39,9 @@ Os pacotes são carregados pelo `.Rprofile`; os scripts não repetem chamadas de
 
 ## Metodologia atual
 
-- o score usa exatamente 36 meses encerrados e comuns a todos os fundos;
+- retorno, risco, correlações e a elegibilidade-base usam exatamente 36 meses encerrados e comuns a todos os fundos;
+- o pilar de consistência usa 72 meses completos e comuns: hit rate mensal em 72 observações, hit rate de 6 meses em 67 janelas móveis e hit rate de 12 meses em 61 janelas móveis;
+- dentro do pilar de consistência, os pesos são 20% mensal, 20% para 6 meses e 60% para 12 meses;
 - o calendário do CDI define os limites de cada mês; o mês mais recente só entra
   depois que houver observação no mês seguinte;
 - o histórico completo é preservado para diagnósticos e visualizações;
@@ -78,4 +80,4 @@ A saída canônica é `output/reports/analise_high_grade.xlsx`. A aba `Ranking` 
 
 A antiga aba Ranking passa a se chamar `Diligência e Redundância`, preservando os alertas, a fila qualitativa e os diagnósticos de correlação sem repetir métricas e notas. As quatro abas `Pilar` (retorno, consistência, risco e custo) permanecem com valor, cálculo, z-score, nota, peso, contribuição, nota e quartil do pilar. `Todos os Fundos` acrescenta o CNPJ como texto de 14 dígitos, lido do `cadastro.csv`. Os 53 identificadores foram migrados por correspondência exata de nomes da planilha cadastral legada, com validação dos dígitos verificadores; o XLSX legado continua fora dos insumos do pipeline. O `Dicionário` define os campos; a abertura é auditável e não altera o score.
 
-Os scripts canônicos mantêm a metodologia da versão de 36 meses. A abordagem paralela de `selecao_credito.R` permanece em `legacy/` e não entra silenciosamente no score atual.
+Os scripts canônicos mantêm 36 meses para retorno, risco e correlações e 72 meses para os hit rates de consistência. A abordagem paralela de `selecao_credito.R` permanece em `legacy/` e não entra silenciosamente no score atual.

@@ -1,0 +1,171 @@
+name: Rebuild critérios CP — consistência 72m
+# Rebuild auditável dos outputs após mudança metodológica.
+
+on:
+  push:
+    branches:
+      - consistencia-72m-hit-rates
+    paths:
+      - "projects/criterios-selecao-fundos-cp/**"
+      - ".github/workflows/criterios-cp-consistencia-72m.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.5.1"
+          use-public-rspm: true
+
+      - name: Install R system libraries
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libpng-dev \
+            libtiff-dev \
+            libjpeg-dev \
+            libharfbuzz-dev \
+            libfribidi-dev \
+            libgit2-dev \
+            libicu-dev
+
+      - name: Bootstrap renv
+        shell: bash
+        env:
+          R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file -e 'install.packages("https://cloud.r-project.org/src/contrib/Archive/renv/renv_1.1.5.tar.gz", repos = NULL, type = "source")'
+
+      - name: Restore lockfile into isolated CI library
+        shell: bash
+        env:
+          R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file - <<'RS'
+          dir.create(".ci-library", showWarnings = FALSE)
+          renv::restore(
+            library = ".ci-library",
+            lockfile = "renv.lock",
+            prompt = FALSE
+          )
+          RS
+
+      - name: Rebuild quantitative pipeline
+        shell: bash
+        env:
+          R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file - <<'RS'
+          .libPaths(c(normalizePath(".ci-library"), .libPaths()))
+          pacotes = c(
+            "conflicted", "tidyverse", "magrittr", "readxl", "openxlsx",
+            "stringi", "slider", "scales", "cluster", "quantmod", "janitor",
+            "bizdays", "PerformanceAnalytics", "lubridate", "zoo", "ggrepel"
+          )
+          lapply(pacotes, library, character.only = TRUE)
+          conflict_prefer("filter", "dplyr")
+          conflict_prefer("lag", "dplyr")
+          conflict_prefer("select", "dplyr")
+          conflict_prefer("view", "tibble")
+          conflict_prefer("set_names", "magrittr")
+          conflict_prefer("last", "dplyr")
+          conflict_prefer("first", "dplyr")
+          source(
+            "projects/criterios-selecao-fundos-cp/00_run_all.R",
+            encoding = "UTF-8"
+          )
+          RS
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update methodology Word
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check python-docx
+          python projects/criterios-selecao-fundos-cp/scripts/update_metodologia_docx.py
+
+      - name: Validate methodology and regenerated workbook
+        shell: bash
+        env:
+          R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file - <<'RS'
+          .libPaths(c(normalizePath(".ci-library"), .libPaths()))
+          library(openxlsx)
+          score_file = "projects/criterios-selecao-fundos-cp/scripts/04_score_e_aprovacao.R"
+          score_txt = paste(readLines(score_file, warn = FALSE), collapse = "\n")
+          stopifnot(
+            grepl("mensal = 0.20", score_txt, fixed = TRUE),
+            grepl("seis_meses = 0.20", score_txt, fixed = TRUE),
+            grepl("doze_meses = 0.60", score_txt, fixed = TRUE)
+          )
+          xlsx = "projects/criterios-selecao-fundos-cp/output/reports/analise_high_grade.xlsx"
+          stopifnot(file.exists(xlsx))
+          tabs = getSheetNames(xlsx)
+          stopifnot(all(c("Ranking", "Pilar Consistência", "Metodologia") %in% tabs))
+          metodologia = read.xlsx(xlsx, sheet = "Metodologia")
+          texto_metodologia = paste(unlist(metodologia), collapse = " | ")
+          stopifnot(
+            grepl("72 meses", texto_metodologia, fixed = TRUE),
+            grepl("12 meses 60%", texto_metodologia, fixed = TRUE)
+          )
+          cat("[QA] Metodologia 72m e pesos 20/20/60 presentes no XLSX.\n")
+          RS
+
+      - name: Render Word for QA
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice poppler-utils
+          mkdir -p /tmp/docx_qa
+          libreoffice --headless --convert-to pdf --outdir /tmp/docx_qa             "projects/criterios-selecao-fundos-cp/Critérios de Seleção de Fundos CP_v4.docx"
+          pdftoppm -png -r 110             "/tmp/docx_qa/Critérios de Seleção de Fundos CP_v4.pdf"             /tmp/docx_qa/page
+          ls -lh /tmp/docx_qa
+
+      - name: Upload QA render
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-docx-consistencia-72m
+          path: /tmp/docx_qa/
+          retention-days: 3
+
+      - name: Show changed outputs
+        shell: bash
+        run: |
+          git status --short
+          git diff --stat
+
+      - name: Commit regenerated deliverables
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add             "projects/criterios-selecao-fundos-cp/Critérios de Seleção de Fundos CP_v4.docx"             "projects/criterios-selecao-fundos-cp/output"
+          if git diff --cached --quiet; then
+            echo "No regenerated deliverables changed."
+          else
+            git commit -m "Regenera outputs com consistência em 72 meses"
+            git push origin HEAD:consistencia-72m-hit-rates
+          fi

@@ -18,14 +18,23 @@ dir.create(path = path_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_fundos_figures, recursive = TRUE, showWarnings = FALSE)
 dir.create(path = path_reports, recursive = TRUE, showWarnings = FALSE)
 
+figuras_substituidas = c(
+  "grafico_ranking_fundos_36m.png",
+  "grafico_score_consistencia_36m.png",
+  "grafico_score_custo_36m.png"
+)
+
+paths_figuras_substituidas = file.path(path_figures, figuras_substituidas)
+file.remove(paths_figuras_substituidas[file.exists(paths_figuras_substituidas)])
+
 figuras_canonicas = c(
   "heatmap_correlacao_excessos_mensais_36m.png",
   "dendrograma_fundos_excessos_mensais_36m.png",
-  "grafico_ranking_fundos_36m.png",
+  "grafico_ranking_fundos.png",
   "grafico_score_retorno_36m.png",
-  "grafico_score_consistencia_36m.png",
+  "grafico_score_consistencia_72m.png",
   "grafico_score_risco_36m.png",
-  "grafico_score_custo_36m.png",
+  "grafico_score_custo_atual.png",
   "heatmap_afinidade_benchmarks_36m.png",
   "grafico_excesso_cdi_quartis_36m.png",
   "grafico_excesso_cdi_fundos_aprovados_36m.png",
@@ -281,7 +290,7 @@ grafico_ranking = ggplot(
   scale_y_continuous(limits = c(0, 100)) +
   labs(
     title = "Score de qualidade individual",
-    subtitle = "Aprovado com margem a partir de 58; zona cinzenta entre 52 e abaixo de 58",
+    subtitle = "Retorno e risco: 36m | consistência: 72m | aprovado com margem a partir de 58",
     x = NULL,
     y = "Nota",
     fill = NULL
@@ -293,7 +302,7 @@ grafico_ranking = ggplot(
   )
 
 ggsave(
-  filename = file.path(path_figures, "grafico_ranking_fundos_36m.png"),
+  filename = file.path(path_figures, "grafico_ranking_fundos.png"),
   plot = grafico_ranking,
   width = 12,
   height = max(9, nrow(base_ranking_plot) * 0.25),
@@ -319,6 +328,20 @@ titulos_pilares = c(
 for (pilar in names(pilares_score)) {
   coluna_nota = pilares_score[[pilar]]
   titulo_pilar = titulos_pilares[[pilar]]
+  janela_pilar = switch(
+    pilar,
+    retorno = "36 meses comuns",
+    consistencia = "72 meses comuns",
+    risco = "36 meses comuns",
+    custo = "Cadastro vigente"
+  )
+  sufixo_pilar = switch(
+    pilar,
+    retorno = "36m",
+    consistencia = "72m",
+    risco = "36m",
+    custo = "atual"
+  )
   base_pilar_plot = priorizacao_qualitativa %>%
     arrange(desc(.data[[coluna_nota]]), nome_plot) %>%
     mutate(nome_plot = factor(nome_plot, levels = rev(nome_plot)))
@@ -332,7 +355,7 @@ for (pilar in names(pilares_score)) {
     scale_y_continuous(limits = c(0, 100)) +
     labs(
       title = paste("Score de", titulo_pilar),
-      subtitle = "Fundos em ordem decrescente da nota do pilar",
+      subtitle = paste("Fundos em ordem decrescente da nota do pilar |", janela_pilar),
       x = NULL,
       y = "Nota"
     ) +
@@ -345,7 +368,7 @@ for (pilar in names(pilares_score)) {
   ggsave(
     filename = file.path(
       path_figures,
-      paste0("grafico_score_", pilar, "_36m.png")
+      paste0("grafico_score_", pilar, "_", sufixo_pilar, ".png")
     ),
     plot = grafico_pilar,
     width = 12,
@@ -879,7 +902,8 @@ abertura_custo_xlsx = abertura_score_xlsx %>%
 
 metodologia_xlsx = tibble(
   item = c(
-    "Janela do score",
+    "Janela principal",
+    "Janela de consistência",
     "Histórico completo",
     "Excesso anualizado sobre CDI",
     "Janela móvel de 36 meses",
@@ -898,14 +922,15 @@ metodologia_xlsx = tibble(
     "Clusters"
   ),
   decisao = c(
-    "36 meses completos e comuns a todos os fundos",
-    "Preservado apenas para diagnósticos e visualizações",
+    "36 meses completos e comuns para retorno, risco, correlações e demais métricas da janela principal",
+    "72 meses completos e comuns para os hit rates de consistência: 72 observações mensais, 67 janelas móveis de 6 meses e 61 janelas móveis de 12 meses",
+    "Preservado para diagnósticos, visualizações e construção da janela comum de consistência de 72 meses",
     "Produto dos excessos mensais geométricos elevado a 12/36, menos 1; não é spread de crédito ou diferença simples entre taxas anualizadas",
     "Nas fichas individuais, cada ponto usa 36 meses completos e consecutivos do histórico; diagnóstico fora do score",
     "Z-score robusto com MAD padrão, limite [-4,4] e logística 0-100",
     "Cada aba Pilar mostra valor da métrica, cálculo, z orientado e truncado usado na nota, nota, peso, contribuição, nota do pilar e quartil do pilar; Q1 é o melhor quartil entre elegíveis",
     "Retorno 30%; consistência 25%; risco 20%; custo 25%",
-    "Hit rates mensal 40%, 6 meses 20% e 12 meses 40%",
+    "Hit rates mensal 20%, 6 meses 20% e 12 meses 60%; todos calculados nos mesmos 72 meses comuns",
     "Taxa 60% e razão excesso líquido/taxa 40%",
     "Não integra o score de qualidade",
     "Aprovado com margem: nota >= 58, sem red flag e sem pilar abaixo de 30",
