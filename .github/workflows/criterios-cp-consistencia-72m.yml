@@ -30,6 +30,13 @@ jobs:
           r-version: "4.5.1"
           use-public-rspm: true
 
+      - name: Bootstrap renv
+        shell: bash
+        env:
+          R_PROFILE_USER: /dev/null
+        run: |
+          Rscript --no-init-file -e 'install.packages("renv", repos = "https://cloud.r-project.org")'
+
       - name: Restore renv
         uses: r-lib/actions/setup-renv@v2
         env:
