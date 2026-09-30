@@ -1,0 +1,97 @@
+name: Rebuild critérios CP — consistência 72m
+
+on:
+  push:
+    branches:
+      - consistencia-72m-hit-rates
+    paths:
+      - "projects/criterios-selecao-fundos-cp/**"
+      - ".github/workflows/criterios-cp-consistencia-72m.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.5.1"
+          use-public-rspm: true
+
+      - name: Restore renv
+        uses: r-lib/actions/setup-renv@v2
+
+      - name: Rebuild quantitative pipeline
+        shell: bash
+        run: Rscript projects/criterios-selecao-fundos-cp/00_run_all.R
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update methodology Word
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check python-docx
+          python projects/criterios-selecao-fundos-cp/scripts/update_metodologia_docx.py
+
+      - name: Validate methodology strings
+        shell: bash
+        run: |
+          Rscript - <<'RS'
+          source("projects/criterios-selecao-fundos-cp/scripts/04_score_e_aprovacao.R", encoding = "UTF-8")
+          stopifnot(
+            abs(cfg_pesos_consistencia["mensal"] - 0.20) < 1e-12,
+            abs(cfg_pesos_consistencia["seis_meses"] - 0.20) < 1e-12,
+            abs(cfg_pesos_consistencia["doze_meses"] - 0.60) < 1e-12
+          )
+          cat("[QA] Pesos de consistência reconciliados: 20/20/60.\n")
+          RS
+
+      - name: Render Word for QA
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice poppler-utils
+          mkdir -p /tmp/docx_qa
+          libreoffice --headless --convert-to pdf --outdir /tmp/docx_qa             "projects/criterios-selecao-fundos-cp/Critérios de Seleção de Fundos CP_v4.docx"
+          pdftoppm -png -r 110             "/tmp/docx_qa/Critérios de Seleção de Fundos CP_v4.pdf"             /tmp/docx_qa/page
+          ls -lh /tmp/docx_qa
+
+      - name: Upload QA render
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-docx-consistencia-72m
+          path: /tmp/docx_qa/
+          retention-days: 3
+
+      - name: Show changed outputs
+        shell: bash
+        run: |
+          git status --short
+          git diff --stat
+
+      - name: Commit regenerated deliverables
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add             "projects/criterios-selecao-fundos-cp/Critérios de Seleção de Fundos CP_v4.docx"             "projects/criterios-selecao-fundos-cp/output"
+          if git diff --cached --quiet; then
+            echo "No regenerated deliverables changed."
+          else
+            git commit -m "Regenera outputs com consistência em 72 meses"
+            git push origin HEAD:consistencia-72m-hit-rates
+          fi
