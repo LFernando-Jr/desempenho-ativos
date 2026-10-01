@@ -618,30 +618,8 @@ indice_inelegiveis = universo_elegibilidade %>%
 
 indice_fundos = bind_rows(indice_elegiveis, indice_inelegiveis)
 
-# Diagnóstico histórico: cada ponto usa 36 meses completos e consecutivos.
-# Não participa do score nem substitui a janela comum da classificação.
-base_excesso_movel_36m = fundos_mensais_historico %>%
-  select(nome_plot, mes, excesso_cdi_m) %>%
-  filter(is.finite(excesso_cdi_m)) %>%
-  arrange(nome_plot, mes) %>%
-  group_by(nome_plot) %>%
-  mutate(
-    inicio_janela = lag(mes, 35L),
-    excesso_36m_acumulado = slide_dbl(
-      .x = excesso_cdi_m,
-      .f = ~ prod(1 + .x) - 1,
-      .before = 35L,
-      .complete = TRUE
-    ),
-    excesso_cdi_aa_movel_36m = if_else(
-      !is.na(inicio_janela) &
-        mes == inicio_janela %m+% months(35L),
-      (1 + excesso_36m_acumulado)^(1 / 3) - 1,
-      NA_real_
-    )
-  ) %>%
-  ungroup() %>%
-  filter(is.finite(excesso_cdi_aa_movel_36m))
+# Os diagnósticos mensais de cada ficha usam somente meses completos dentro
+# do calendário comum. O score continua a usar sua própria janela de 36 meses.
 
 # Para séries sem score, aplica a mesma integridade mensal da Etapa 2.
 meses_validos_fichas = fundos_retornos_historico %>%
@@ -691,6 +669,9 @@ for (i in seq_len(nrow(indice_fundos))) {
   tem_score = !is.na(indice_fundos$ranking_geral[[i]])
 
   if (tem_score) {
+    meses_fundo = fundos_mensais_score %>%
+      filter(nome_plot == nome_fundo) %>%
+      arrange(mes)
     dados_mensais = base_trajetorias_plot %>%
       filter(nome_plot == nome_fundo)
     dados_diarios = fundos_retornos_score %>%
@@ -726,6 +707,29 @@ for (i in seq_len(nrow(indice_fundos))) {
                           "não comparável ao score")
   }
 
+  meses_fundo = meses_fundo %>%
+    mutate(
+      indice_mes = lubridate::year(mes) * 12L + lubridate::month(mes),
+      segmento = cumsum(indice_mes - lag(
+        indice_mes, default = first(indice_mes) - 1L
+      ) != 1L)
+    ) %>%
+    group_by(segmento) %>%
+    mutate(
+      excesso_cdi_movel_12m = slider::slide_dbl(
+        excesso_cdi_m, ~ prod(1 + .x) - 1,
+        .before = 11L, .complete = TRUE
+      )
+    ) %>%
+    ungroup()
+  n_meses = nrow(meses_fundo)
+  n_janelas_12m = sum(is.finite(meses_fundo$excesso_cdi_movel_12m))
+  hit_mensal = sum(meses_fundo$excesso_cdi_m > 0)
+  hit_12m = sum(meses_fundo$excesso_cdi_movel_12m > 0, na.rm = TRUE)
+  if (tem_score) {
+    stopifnot(n_meses == 36L, n_janelas_12m == 25L)
+  }
+
   dados_mensais = dados_mensais %>%
     mutate(
       indice_mes = lubridate::year(mes) * 12L + lubridate::month(mes),
@@ -735,6 +739,8 @@ for (i in seq_len(nrow(indice_fundos))) {
     mutate(excesso_cdi_pb = 10000 * excesso_cdi_liq)
 
   retornos = dados_diarios$excesso_cdi_pb
+  media_diaria_pb = mean(retornos)
+  mediana_diaria_pb = median(retornos)
   desvio_populacional = sqrt(mean((retornos - mean(retornos))^2))
   assimetria = if (desvio_populacional > 0) {
     mean(((retornos - mean(retornos)) / desvio_populacional)^3)
@@ -767,13 +773,31 @@ for (i in seq_len(nrow(indice_fundos))) {
          y = "Queda desde o pico") +
     theme_minimal(base_size = 10)
 
-  dados_moveis = base_excesso_movel_36m %>%
-    filter(nome_plot == nome_fundo)
+  grafico_mensal_fundo = ggplot(
+    meses_fundo,
+    aes(x = mes, y = excesso_cdi_m, fill = excesso_cdi_m > 0)
+  ) +
+    geom_hline(yintercept = 0, color = "grey55") +
+    geom_col(width = 25, show.legend = FALSE) +
+    scale_fill_manual(values = c("TRUE" = "#2C7FB8", "FALSE" = "#B35850")) +
+    scale_y_continuous(labels = percent_format(
+      accuracy = 0.1, decimal.mark = ","
+    )) +
+    labs(
+      title = "Excesso mensal sobre o CDI",
+      subtitle = paste0(hit_mensal, " de ", n_meses,
+                        " meses acima do CDI"),
+      x = NULL, y = "Excesso mensal"
+    ) +
+    theme_minimal(base_size = 10)
+
+  dados_moveis = meses_fundo %>%
+    filter(is.finite(excesso_cdi_movel_12m))
 
   if (nrow(dados_moveis) > 0) {
     grafico_movel_fundo = ggplot(
       dados_moveis,
-      aes(x = mes, y = excesso_cdi_aa_movel_36m)
+      aes(x = mes, y = excesso_cdi_movel_12m)
     ) +
       geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
       geom_line(color = "#2F5496", linewidth = 0.8) +
@@ -781,20 +805,21 @@ for (i in seq_len(nrow(indice_fundos))) {
         accuracy = 0.1, decimal.mark = ","
       )) +
       labs(
-        title = "Excesso anualizado sobre o CDI em janelas móveis de 36 meses",
-        subtitle = "Histórico completo; cada ponto exige 36 meses consecutivos",
-        x = NULL, y = "Excesso anualizado"
+        title = "Excesso sobre o CDI em janelas móveis de 12 meses",
+        subtitle = paste0(hit_12m, " de ", n_janelas_12m,
+                          " janelas acima do CDI; apenas meses completos na janela comum"),
+        x = NULL, y = "Excesso em 12 meses"
       ) +
       theme_minimal(base_size = 10)
   } else {
     grafico_movel_fundo = ggplot() +
       annotate(
         "text", x = 0, y = 0,
-        label = "Sem 36 meses completos e consecutivos no histórico",
+        label = "Sem 12 meses completos e consecutivos na janela comum",
         color = "grey45", size = 4
       ) +
       xlim(-1, 1) + ylim(-1, 1) +
-      labs(title = "Excesso anualizado em janelas móveis de 36 meses") +
+      labs(title = "Excesso em janelas móveis de 12 meses") +
       theme_void(base_size = 10) +
       theme(plot.title = element_text(face = "plain"))
   }
@@ -806,8 +831,12 @@ for (i in seq_len(nrow(indice_fundos))) {
                    fill = "#9ECAE1", color = "white") +
     geom_density(color = "#08519C", linewidth = 0.9) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+    geom_vline(xintercept = media_diaria_pb, color = "#1F77B4",
+               linewidth = 0.8) +
+    geom_vline(xintercept = mediana_diaria_pb, color = "#E69F00",
+               linetype = "dotdash", linewidth = 0.8) +
     labs(title = "Distribuição diária do excesso sobre o CDI",
-         subtitle = "Barras = observações; curva = densidade estimada",
+         subtitle = "Barras = observações; curva = densidade; média em azul, mediana em laranja",
          x = "Excesso diário (pontos-base)", y = "Densidade") +
     theme_minimal(base_size = 10)
 
@@ -817,21 +846,27 @@ for (i in seq_len(nrow(indice_fundos))) {
   subtitulo_fundo = paste0(indice_fundos$status_quantitativo[[i]],
                            " | ", janela_fundo)
   rodape_fundo = paste0(
-    "Distribuição: ", length(retornos), " dias; ",
+    "Mensal: ", hit_mensal, "/", n_meses, " acima do CDI; 12 meses: ",
+    hit_12m, "/", n_janelas_12m, " janelas acima do CDI.\n",
+    "Distribuição diária: ", length(retornos), " dias; ",
     sprintf("%.1f%%", 100 * mean(retornos < 0)),
-    " abaixo do CDI; assimetria ", sprintf("%.2f", assimetria),
+    " abaixo do CDI; média ", formatC(media_diaria_pb, format = "f",
+       digits = 2, decimal.mark = ","), " pb; mediana ",
+    formatC(mediana_diaria_pb, format = "f", digits = 2,
+            decimal.mark = ","), " pb.\n",
+    "Assimetria ", sprintf("%.2f", assimetria),
     "; excesso de curtose ", sprintf("%.2f", curtose_excesso),
     ". Indicadores descritivos, não critérios de aprovação."
   )
 
   png(
     filename = file.path(path_fundos_figures, indice_fundos$arquivo[[i]]),
-    width = 2200, height = 2600, res = 200, bg = "white"
+    width = 2200, height = 3150, res = 200, bg = "white"
   )
   grid::grid.newpage()
   layout_fundo = grid::grid.layout(
-    nrow = 6, ncol = 1,
-    heights = grid::unit(c(0.65, 1, 1, 1.1, 1.25, 0.28), "null")
+    nrow = 7, ncol = 1,
+    heights = grid::unit(c(0.6, 1, 1, 0.95, 1, 1.2, 0.5), "null")
   )
   grid::pushViewport(grid::viewport(layout = layout_fundo))
   grid::grid.text(
@@ -845,14 +880,16 @@ for (i in seq_len(nrow(indice_fundos))) {
         vp = grid::viewport(layout.pos.row = 2))
   print(grafico_drawdown_fundo,
         vp = grid::viewport(layout.pos.row = 3))
-  print(grafico_movel_fundo,
+  print(grafico_mensal_fundo,
         vp = grid::viewport(layout.pos.row = 4))
-  print(grafico_distribuicao_fundo,
+  print(grafico_movel_fundo,
         vp = grid::viewport(layout.pos.row = 5))
+  print(grafico_distribuicao_fundo,
+        vp = grid::viewport(layout.pos.row = 6))
   grid::grid.text(
     rodape_fundo, x = grid::unit(0.5, "npc"),
-    gp = grid::gpar(fontsize = 8),
-    vp = grid::viewport(layout.pos.row = 6)
+    gp = grid::gpar(fontsize = 9),
+    vp = grid::viewport(layout.pos.row = 7)
   )
   grid::popViewport()
   dev.off()
@@ -906,7 +943,7 @@ metodologia_xlsx = tibble(
     "Janela de consistência",
     "Histórico completo",
     "Excesso anualizado sobre CDI",
-    "Janela móvel de 36 meses",
+    "Diagnósticos mensais nas fichas",
     "Conversão das métricas",
     "Abertura por pilar",
     "Pesos dos pilares",
@@ -926,7 +963,7 @@ metodologia_xlsx = tibble(
     "Os mesmos 36 meses completos para os hit rates: 36 observações mensais, 31 janelas móveis de 6 meses e 25 janelas móveis de 12 meses",
     "Preservado para diagnósticos e visualizações; não altera a janela comum do score",
     "Produto dos excessos mensais geométricos elevado a 12/36, menos 1; não é spread de crédito ou diferença simples entre taxas anualizadas",
-    "Nas fichas individuais, cada ponto usa 36 meses completos e consecutivos do histórico; diagnóstico fora do score",
+    "Fichas: barras de excesso mensal e excesso composto em 12 meses móveis dentro da janela comum; média e mediana do excesso diário em pontos-base. Apenas diagnósticos, fora do score",
     "Z-score robusto com MAD padrão, limite [-4,4] e logística 0-100",
     "Cada aba Pilar mostra valor da métrica, cálculo, z orientado e truncado usado na nota, nota, peso, contribuição, nota do pilar e quartil do pilar; Q1 é o melhor quartil entre elegíveis",
     "Retorno 30%; consistência 25%; risco 20%; custo 25%",
