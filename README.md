@@ -2,6 +2,11 @@
 
 Este repositório contém scripts em **R** para análise de desempenho de ativos financeiros e índices de mercado.
 
+Os projetos de seleção de fundos foram separados em repositórios privados:
+`criterios-selecao-fundos-cp` (crédito privado high grade) e
+`criterios-selecao-fundos-fim` (multimercados). Este repositório permanece
+dedicado às análises gerais de desempenho.
+
 ## Estrutura do Repositório
 
 -   `data/` → Bases de dados utilizadas
